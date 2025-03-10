@@ -20,11 +20,11 @@ app.get('/', (req, res) => {
   res.send('Servidor funcionando!');
 });
 
-// Rota para receber os eventos da Hotmart
+// Rota para receber os eventos da Stripe
 app.post('/webhook', async (req, res) => {
   const event = req.body;
 
-  // Verificar se o evento da Hotmart é de pagamento aprovado
+  // Verificar se o evento é de pagamento aprovado (para Hotmart)
   if (event.type === 'payment.approved') {
     const paymentData = event.data;
     const customerEmail = paymentData.customer_email;
@@ -41,6 +41,29 @@ app.post('/webhook', async (req, res) => {
       });
 
       // Você pode adicionar lógica para criar uma assinatura ou cobrar um pagamento aqui, se necessário.
+
+      // Retornar uma resposta de sucesso
+      res.status(200).send('Pagamento processado com sucesso');
+    } catch (error) {
+      console.error('Erro ao integrar com o Stripe:', error);
+      res.status(500).send('Erro ao processar o pagamento');
+    }
+  }
+  // Verificar se o evento é de sessão de checkout completada (para Stripe)
+  else if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const customerEmail = session.customer_email;
+    const paymentIntentId = session.payment_intent;
+
+    console.log(`Pagamento concluído para o cliente: ${customerEmail}`);
+
+    try {
+      // Obter mais informações do PaymentIntent
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      console.log(`Pagamento de ${paymentIntent.amount_received} foi processado com sucesso.`);
+
+      // Aqui você pode adicionar lógica para processar o pagamento, como criar um cliente ou um pedido
 
       // Retornar uma resposta de sucesso
       res.status(200).send('Pagamento processado com sucesso');
