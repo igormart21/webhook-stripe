@@ -1,3 +1,10 @@
+const express = require('express');
+const axios = require('axios');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); // Adicione sua chave secreta aqui
+const app = express();
+
+app.use(express.json()); // Para que o Express possa interpretar JSON no corpo da requisição
+
 // Rota para receber os eventos da Stripe
 app.post('/webhook', async (req, res) => {
   const event = req.body;
@@ -6,15 +13,9 @@ app.post('/webhook', async (req, res) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
-    // Verificação adicional para garantir que o email do cliente existe
     const customerEmail = session.customer_email;
-    if (!customerEmail) {
-      console.error('Erro: O email do cliente não foi fornecido');
-      return res.status(400).send('Email do cliente não encontrado');
-    }
-
-    const productId = session.metadata.product_id;  // Pega o ID do produto
-    const productName = session.metadata.product_name;  // Pega o nome do produto, se disponível
+    const productId = session.metadata.product_id;
+    const productName = session.metadata.product_name;
 
     console.log(`Pagamento aprovado para o produto ${productName}, cliente: ${customerEmail}`);
 
@@ -28,28 +29,27 @@ app.post('/webhook', async (req, res) => {
       // Fazer a chamada para a Hotmart API para liberar o acesso ao produto
       const hotmartApiUrl = process.env.HOTMART_API_URL;
       if (!hotmartApiUrl) {
-        console.error('Erro: URL da Hotmart não configurada');
-        return res.status(500).send('Erro de configuração da Hotmart');
+        console.error("A URL da Hotmart não está definida");
+        return res.status(500).send('Erro de configuração da Hotmart API');
       }
 
       const response = await axios.post(hotmartApiUrl, {
-        customerEmail: customerEmail,  // Passando os dados para a Hotmart
-        productId: productId,          // Passando o ID do produto
+        customerEmail: customerEmail,
       });
 
-      if (response.status === 200) {
-        console.log('Acesso ao produto liberado:', response.data);
-        return res.status(200).send('Pagamento processado com sucesso');
-      } else {
-        console.error('Erro ao liberar acesso ao produto:', response.data);
-        return res.status(500).send('Erro ao liberar acesso ao produto');
-      }
+      console.log('Acesso ao produto liberado:', response.data);
+
+      res.status(200).send('Pagamento processado com sucesso');
     } catch (error) {
       console.error('Erro ao integrar com o Stripe ou Hotmart:', error);
-      return res.status(500).send('Erro ao processar o pagamento');
+      res.status(500).send('Erro ao processar o pagamento');
     }
   } else {
-    // Se o evento não for esperado, retornar erro
-    return res.status(400).send('Evento inválido');
+    res.status(400).send('Evento inválido');
   }
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Servidor rodando na porta ${port}`);
 });
