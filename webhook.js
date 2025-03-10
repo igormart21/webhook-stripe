@@ -1,36 +1,14 @@
-// Carregar variáveis de ambiente do arquivo .env
-require('dotenv').config();
-
-// Importar as dependências
-const express = require('express');
-const bodyParser = require('body-parser');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const axios = require('axios'); // Para fazer chamadas HTTP
-
-// Criar o servidor Express
-const app = express();
-
-// Middleware para parsear o corpo das requisições em JSON
-app.use(bodyParser.json());
-
-// Definir a porta onde o servidor vai rodar
-const PORT = process.env.PORT || 8080; // Alterei para 8080
-
-// Endpoint para verificar se o servidor está ativo
-app.get('/', (req, res) => {
-  res.send('Servidor funcionando!');
-});
-
-// Rota para receber os eventos da Hotmart
+// Rota para receber os eventos da Stripe
 app.post('/webhook', async (req, res) => {
   const event = req.body;
 
-  // Verificar se o evento da Hotmart é de pagamento aprovado
-  if (event.type === 'payment.approved') {
-    const paymentData = event.data;
-    const customerEmail = paymentData.customer_email;
-    const productId = paymentData.product.id;
-    const productName = paymentData.product.name;
+  // Verificar se o evento é do tipo checkout.session.completed
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+
+    const customerEmail = session.customer_email;
+    const productId = session.metadata.product_id;  // Aqui você pode adicionar a lógica para pegar o ID do produto
+    const productName = session.metadata.product_name;  // E o nome do produto, se estiver disponível
 
     console.log(`Pagamento aprovado para o produto ${productName}, cliente: ${customerEmail}`);
 
@@ -38,13 +16,13 @@ app.post('/webhook', async (req, res) => {
       // Criar o cliente no Stripe usando o e-mail do cliente
       const customer = await stripe.customers.create({
         email: customerEmail,
-        description: `Cliente Hotmart - Produto: ${productName}`,
+        description: `Cliente Stripe - Produto: ${productName}`,
       });
 
       // Fazer a chamada para a Hotmart API para liberar o acesso ao produto
-      const hotmartApiUrl = process.env.HOTMART_API_URL;  // Aqui a variável de ambiente é usada
+      const hotmartApiUrl = process.env.HOTMART_API_URL;
       const response = await axios.post(hotmartApiUrl, {
-        customerEmail: customerEmail, // Outros dados necessários para liberar o acesso
+        customerEmail: customerEmail, // Passando os dados para Hotmart
       });
 
       console.log('Acesso ao produto liberado:', response.data);
@@ -59,9 +37,4 @@ app.post('/webhook', async (req, res) => {
     // Se o evento não for esperado, retornar erro
     res.status(400).send('Evento inválido');
   }
-});
-
-// Iniciar o servidor
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
 });
