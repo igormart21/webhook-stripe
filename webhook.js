@@ -6,6 +6,11 @@ const app = express();
 app.use(express.json()); // Para que o Express possa interpretar JSON no corpo da requisição
 
 // Rota para receber os eventos da Stripe
+// Rota para a raiz
+app.get('/', (req, res) => {
+  res.send('Servidor funcionando!');
+});
+
 app.post('/webhook', async (req, res) => {
   const event = req.body;
 
