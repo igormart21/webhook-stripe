@@ -6,9 +6,15 @@ app.post('/webhook', async (req, res) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
+    // Verificação adicional para garantir que o email do cliente existe
     const customerEmail = session.customer_email;
-    const productId = session.metadata.product_id;  // Aqui você pode adicionar a lógica para pegar o ID do produto
-    const productName = session.metadata.product_name;  // E o nome do produto, se estiver disponível
+    if (!customerEmail) {
+      console.error('Erro: O email do cliente não foi fornecido');
+      return res.status(400).send('Email do cliente não encontrado');
+    }
+
+    const productId = session.metadata.product_id;  // Pega o ID do produto
+    const productName = session.metadata.product_name;  // Pega o nome do produto, se disponível
 
     console.log(`Pagamento aprovado para o produto ${productName}, cliente: ${customerEmail}`);
 
@@ -21,20 +27,29 @@ app.post('/webhook', async (req, res) => {
 
       // Fazer a chamada para a Hotmart API para liberar o acesso ao produto
       const hotmartApiUrl = process.env.HOTMART_API_URL;
+      if (!hotmartApiUrl) {
+        console.error('Erro: URL da Hotmart não configurada');
+        return res.status(500).send('Erro de configuração da Hotmart');
+      }
+
       const response = await axios.post(hotmartApiUrl, {
-        customerEmail: customerEmail, // Passando os dados para Hotmart
+        customerEmail: customerEmail,  // Passando os dados para a Hotmart
+        productId: productId,          // Passando o ID do produto
       });
 
-      console.log('Acesso ao produto liberado:', response.data);
-
-      // Retornar uma resposta de sucesso
-      res.status(200).send('Pagamento processado com sucesso');
+      if (response.status === 200) {
+        console.log('Acesso ao produto liberado:', response.data);
+        return res.status(200).send('Pagamento processado com sucesso');
+      } else {
+        console.error('Erro ao liberar acesso ao produto:', response.data);
+        return res.status(500).send('Erro ao liberar acesso ao produto');
+      }
     } catch (error) {
       console.error('Erro ao integrar com o Stripe ou Hotmart:', error);
-      res.status(500).send('Erro ao processar o pagamento');
+      return res.status(500).send('Erro ao processar o pagamento');
     }
   } else {
     // Se o evento não for esperado, retornar erro
-    res.status(400).send('Evento inválido');
+    return res.status(400).send('Evento inválido');
   }
 });
