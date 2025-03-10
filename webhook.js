@@ -5,6 +5,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const axios = require('axios'); // Para fazer chamadas HTTP
 
 // Criar o servidor Express
 const app = express();
@@ -20,11 +21,11 @@ app.get('/', (req, res) => {
   res.send('Servidor funcionando!');
 });
 
-// Rota para receber os eventos da Stripe
+// Rota para receber os eventos da Hotmart
 app.post('/webhook', async (req, res) => {
   const event = req.body;
 
-  // Verificar se o evento é de pagamento aprovado (para Hotmart)
+  // Verificar se o evento da Hotmart é de pagamento aprovado
   if (event.type === 'payment.approved') {
     const paymentData = event.data;
     const customerEmail = paymentData.customer_email;
@@ -40,35 +41,18 @@ app.post('/webhook', async (req, res) => {
         description: `Cliente Hotmart - Produto: ${productName}`,
       });
 
-      // Você pode adicionar lógica para criar uma assinatura ou cobrar um pagamento aqui, se necessário.
+      // Fazer a chamada para a Hotmart API para liberar o acesso ao produto
+      const hotmartApiUrl = process.env.HOTMART_API_URL;  // Aqui a variável de ambiente é usada
+      const response = await axios.post(hotmartApiUrl, {
+        customerEmail: customerEmail, // Outros dados necessários para liberar o acesso
+      });
+
+      console.log('Acesso ao produto liberado:', response.data);
 
       // Retornar uma resposta de sucesso
       res.status(200).send('Pagamento processado com sucesso');
     } catch (error) {
-      console.error('Erro ao integrar com o Stripe:', error);
-      res.status(500).send('Erro ao processar o pagamento');
-    }
-  }
-  // Verificar se o evento é de sessão de checkout completada (para Stripe)
-  else if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const customerEmail = session.customer_email;
-    const paymentIntentId = session.payment_intent;
-
-    console.log(`Pagamento concluído para o cliente: ${customerEmail}`);
-
-    try {
-      // Obter mais informações do PaymentIntent
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-      console.log(`Pagamento de ${paymentIntent.amount_received} foi processado com sucesso.`);
-
-      // Aqui você pode adicionar lógica para processar o pagamento, como criar um cliente ou um pedido
-
-      // Retornar uma resposta de sucesso
-      res.status(200).send('Pagamento processado com sucesso');
-    } catch (error) {
-      console.error('Erro ao integrar com o Stripe:', error);
+      console.error('Erro ao integrar com o Stripe ou Hotmart:', error);
       res.status(500).send('Erro ao processar o pagamento');
     }
   } else {
