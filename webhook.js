@@ -54,7 +54,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;  // Usando a variável de ambiente PORT ou 8080 se não estiver configurada
 app.listen(port, () => {
   console.log(`Servidor rodando na porta ${port}`);
 });
