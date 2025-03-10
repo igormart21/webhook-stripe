@@ -1,4 +1,3 @@
-
 // Carregar variáveis de ambiente do arquivo .env
 require('dotenv').config();
 
@@ -14,7 +13,7 @@ const app = express();
 app.use(bodyParser.json());
 
 // Definir a porta onde o servidor vai rodar
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080; // Alterei para 8080
 
 // Rota para receber os eventos da Hotmart
 app.post('/webhook', async (req, res) => {
