@@ -50,6 +50,7 @@ app.post('/webhook', async (req, res) => {
 });
 
 // Iniciar o servidor
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+app.get('/', (req, res) => {
+  res.status(200).send('Servidor funcionando!');
 });
+
