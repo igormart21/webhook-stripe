@@ -15,6 +15,11 @@ app.use(bodyParser.json());
 // Definir a porta onde o servidor vai rodar
 const PORT = process.env.PORT || 8080; // Alterei para 8080
 
+// Endpoint para verificar se o servidor está ativo
+app.get('/', (req, res) => {
+  res.send('Servidor funcionando!');
+});
+
 // Rota para receber os eventos da Hotmart
 app.post('/webhook', async (req, res) => {
   const event = req.body;
@@ -53,4 +58,3 @@ app.post('/webhook', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
-
