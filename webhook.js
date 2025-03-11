@@ -1,49 +1,46 @@
 const express = require('express');
 const axios = require('axios');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); // Adicione sua chave secreta aqui
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const app = express();
 
-app.use(express.json()); // Para que o Express possa interpretar JSON no corpo da requisição
+app.use(express.json()); // Habilita o Express para interpretar JSON
 
 // Rota para receber os eventos da Stripe
-// Rota para a raiz
-app.get('/', (req, res) => {
-  res.send('Servidor funcionando!');
-});
-
 app.post('/webhook', async (req, res) => {
   const event = req.body;
 
-  // Verificar se o evento é do tipo checkout.session.completed
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
-    const customerEmail = session.customer_email;
-    const productId = session.metadata.product_id;
-    const productName = session.metadata.product_name;
+    // Pegar o e-mail corretamente
+    const customerEmail = session.customer_email || (session.customer_details ? session.customer_details.email : 'Email não encontrado');
+
+    // Garantir que os metadados existam antes de acessá-los
+    const productId = session.metadata ? session.metadata.product_id : 'Produto não definido';
+    const productName = session.metadata ? session.metadata.product_name : 'Nome do produto não definido';
 
     console.log(`Pagamento aprovado para o produto ${productName}, cliente: ${customerEmail}`);
 
     try {
-      // Criar o cliente no Stripe usando o e-mail do cliente
+      // Criar o cliente no Stripe
       const customer = await stripe.customers.create({
         email: customerEmail,
         description: `Cliente Stripe - Produto: ${productName}`,
       });
 
-      // Fazer a chamada para a Hotmart API para liberar o acesso ao produto
+      // Verificar se a URL da Hotmart está configurada
       const hotmartApiUrl = process.env.HOTMART_API_URL;
       if (!hotmartApiUrl) {
-        console.error("A URL da Hotmart não está definida");
+        console.error("A URL da Hotmart não está definida.");
         return res.status(500).send('Erro de configuração da Hotmart API');
       }
 
+      // Enviar a solicitação para a Hotmart
       const response = await axios.post(hotmartApiUrl, {
         customerEmail: customerEmail,
       });
 
       console.log('Acesso ao produto liberado:', response.data);
-
       res.status(200).send('Pagamento processado com sucesso');
     } catch (error) {
       console.error('Erro ao integrar com o Stripe ou Hotmart:', error);
@@ -54,7 +51,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 8080;  // Usando a variável de ambiente PORT ou 8080 se não estiver configurada
+const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Servidor rodando na porta ${port}`);
 });
