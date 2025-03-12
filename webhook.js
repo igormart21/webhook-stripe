@@ -14,16 +14,11 @@ app.get('/', (req, res) => {
 app.post('/webhook', async (req, res) => {
   const event = req.body;
 
-  // Verifica se o evento é do tipo checkout.session.completed
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-
-    // Garante que o email do cliente seja capturado corretamente
     const customerEmail = session.customer_email || session.customer_details?.email || null;
-    
-    // Evita erro caso session.metadata seja undefined
     const metadata = session.metadata || {};
-    const productId = metadata.product_id || 'Desconhecido';
+    const productId = metadata.product_id;
     const productName = metadata.product_name || 'Produto sem nome';
 
     if (!customerEmail) {
@@ -31,7 +26,12 @@ app.post('/webhook', async (req, res) => {
       return res.status(400).send('Erro: Email do cliente é obrigatório.');
     }
 
-    console.log(`Pagamento aprovado para o produto ${productName}, cliente: ${customerEmail}`);
+    if (!productId) {
+      console.error('Erro: Product ID não encontrado ou inválido.');
+      return res.status(400).send('Erro: Product ID é obrigatório.');
+    }
+
+    console.log(`Pagamento aprovado para ${productName}, Cliente: ${customerEmail}, Produto ID: ${productId}`);
 
     try {
       // Criar o cliente no Stripe
@@ -40,18 +40,20 @@ app.post('/webhook', async (req, res) => {
         description: `Cliente Stripe - Produto: ${productName}`,
       });
 
-      // Verifica se a URL da Hotmart está configurada corretamente
       const hotmartApiUrl = process.env.HOTMART_API_URL;
       const hotmartApiToken = process.env.HOTMART_API_TOKEN;
+
       if (!hotmartApiUrl || !hotmartApiToken) {
-        console.error("A URL ou o Token da Hotmart não estão definidos.");
+        console.error('Erro: Configuração da API Hotmart ausente.');
         return res.status(500).send('Erro de configuração da Hotmart API.');
       }
 
-      // Envia a solicitação para liberar acesso ao produto na Hotmart
+      console.log(`Enviando requisição para Hotmart: ${hotmartApiUrl}`);
+      console.log(`Payload: { email: ${customerEmail}, prod: ${productId} }`);
+
       const response = await axios.post(hotmartApiUrl, {
-        buyer_email: customerEmail,
-        product_id: productId
+        email: customerEmail,
+        prod: productId
       }, {
         headers: {
           Authorization: `Bearer ${hotmartApiToken}`,
@@ -62,7 +64,7 @@ app.post('/webhook', async (req, res) => {
       console.log('Acesso ao produto liberado:', response.data);
       res.status(200).send('Pagamento processado com sucesso.');
     } catch (error) {
-      console.error('Erro ao integrar com o Stripe ou Hotmart:', error);
+      console.error('Erro ao integrar com a Hotmart:', error.response?.data || error.message);
       res.status(500).send('Erro ao processar o pagamento.');
     }
   } else {
@@ -70,7 +72,6 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// Configuração da porta para rodar no Railway corretamente
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Servidor rodando na porta ${port}`);
