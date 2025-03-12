@@ -3,7 +3,7 @@ const axios = require('axios');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
-app.use(express.json()); // Habilita JSON no corpo da requisição
+app.use(express.json());
 
 // Rota para testar se o servidor está rodando
 app.get('/', (req, res) => {
@@ -18,7 +18,7 @@ app.post('/webhook', async (req, res) => {
     const session = event.data.object;
     const customerEmail = session.customer_email || session.customer_details?.email || null;
     const metadata = session.metadata || {};
-    const productId = parseInt(metadata.product_id, 10); // Converte para número
+    const productId = parseInt(metadata.product_id, 10);
 
     if (!customerEmail || !productId) {
       console.error('Erro: Email do cliente ou ID do produto ausente.');
@@ -36,15 +36,22 @@ app.post('/webhook', async (req, res) => {
         return res.status(500).send('Erro de configuração da Hotmart API.');
       }
 
-      // Criar o payload conforme esperado pela Hotmart
+      // Criar um ID único para a requisição
+      const uniqueId = crypto.randomUUID();
+
+      // Criar a estrutura do JSON conforme documentação da Hotmart
       const payload = {
+        id: uniqueId,
+        creation_date: Date.now(), // Timestamp atual
         event: "CLUB_FIRST_ACCESS",
         version: "2.0.0",
         data: {
           product: {
-            id: productId
+            id: productId,
+            name: metadata.product_name || "Produto sem nome"
           },
           user: {
+            name: metadata.customer_name || "Cliente sem nome",
             email: customerEmail
           }
         }
@@ -72,6 +79,7 @@ app.post('/webhook', async (req, res) => {
       res.status(500).send('Erro ao processar o pagamento.');
     }
   } else {
+    console.error("❌ Evento não reconhecido:", event.type);
     res.status(400).send('Evento inválido.');
   }
 });
