@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
@@ -36,14 +37,13 @@ app.post('/webhook', async (req, res) => {
         return res.status(500).send('Erro de configuração da Hotmart API.');
       }
 
-      // Criar um ID único para a requisição
       const uniqueId = crypto.randomUUID();
 
-      // Criar a estrutura do JSON conforme documentação da Hotmart
+      // Criar a estrutura do JSON
       const payload = {
         id: uniqueId,
-        creation_date: Date.now(), // Timestamp atual
-        event: "CLUB_FIRST_ACCESS",
+        creation_date: Date.now(),
+        event: "PURCHASE_APPROVED", // Alterado para um evento mais comum
         version: "2.0.0",
         data: {
           product: {
@@ -75,7 +75,13 @@ app.post('/webhook', async (req, res) => {
       console.log('✅ Acesso ao produto liberado:', response.data);
       res.status(200).send('Pagamento processado com sucesso.');
     } catch (error) {
-      console.error('❌ Erro ao integrar com a Hotmart:', error.response?.data || error.message);
+      console.error('❌ Erro ao integrar com a Hotmart:');
+      if (error.response) {
+        console.error("Status:", error.response.status);
+        console.error("Data:", JSON.stringify(error.response.data, null, 2));
+      } else {
+        console.error(error.message);
+      }
       res.status(500).send('Erro ao processar o pagamento.');
     }
   } else {
