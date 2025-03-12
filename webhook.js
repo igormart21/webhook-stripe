@@ -18,28 +18,16 @@ app.post('/webhook', async (req, res) => {
     const session = event.data.object;
     const customerEmail = session.customer_email || session.customer_details?.email || null;
     const metadata = session.metadata || {};
-    const productId = metadata.product_id;
-    const productName = metadata.product_name || 'Produto sem nome';
+    const productId = metadata.product_id; // Apenas para verificação, não é enviado na Hotmart
 
     if (!customerEmail) {
       console.error('Erro: Email do cliente não encontrado.');
       return res.status(400).send('Erro: Email do cliente é obrigatório.');
     }
 
-    if (!productId) {
-      console.error('Erro: Product ID não encontrado ou inválido.');
-      return res.status(400).send('Erro: Product ID é obrigatório.');
-    }
-
-    console.log(`Pagamento aprovado para ${productName}, Cliente: ${customerEmail}, Produto ID: ${productId}`);
+    console.log(`Pagamento aprovado! Cliente: ${customerEmail}, Produto ID: ${productId}`);
 
     try {
-      // Criar o cliente no Stripe
-      const customer = await stripe.customers.create({
-        email: customerEmail,
-        description: `Cliente Stripe - Produto: ${productName}`,
-      });
-
       const hotmartApiUrl = process.env.HOTMART_API_URL;
       const hotmartApiToken = process.env.HOTMART_API_TOKEN;
 
@@ -48,12 +36,11 @@ app.post('/webhook', async (req, res) => {
         return res.status(500).send('Erro de configuração da Hotmart API.');
       }
 
-      console.log(`Enviando requisição para Hotmart: ${hotmartApiUrl}`);
-      console.log(`Payload: { email: ${customerEmail}, prod: ${productId} }`);
+      console.log(`🟢 Enviando requisição para Hotmart: ${hotmartApiUrl}`);
+      console.log(`Payload: { buyer_email: ${customerEmail} }`);
 
       const response = await axios.post(hotmartApiUrl, {
-        email: customerEmail,
-        prod: productId
+        buyer_email: customerEmail
       }, {
         headers: {
           Authorization: `Bearer ${hotmartApiToken}`,
@@ -61,10 +48,10 @@ app.post('/webhook', async (req, res) => {
         }
       });
 
-      console.log('Acesso ao produto liberado:', response.data);
+      console.log('✅ Acesso ao produto liberado:', response.data);
       res.status(200).send('Pagamento processado com sucesso.');
     } catch (error) {
-      console.error('Erro ao integrar com a Hotmart:', error.response?.data || error.message);
+      console.error('❌ Erro ao integrar com a Hotmart:', error.response?.data || error.message);
       res.status(500).send('Erro ao processar o pagamento.');
     }
   } else {
@@ -72,6 +59,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
+// Configuração da porta para rodar no Railway corretamente
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Servidor rodando na porta ${port}`);
