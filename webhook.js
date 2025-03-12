@@ -18,14 +18,14 @@ app.post('/webhook', async (req, res) => {
     const session = event.data.object;
     const customerEmail = session.customer_email || session.customer_details?.email || null;
     const metadata = session.metadata || {};
-    const productId = metadata.product_id; // Apenas para verificação, não é enviado na Hotmart
+    const productId = parseInt(metadata.product_id, 10); // Converte para número
 
-    if (!customerEmail) {
-      console.error('Erro: Email do cliente não encontrado.');
-      return res.status(400).send('Erro: Email do cliente é obrigatório.');
+    if (!customerEmail || !productId) {
+      console.error('Erro: Email do cliente ou ID do produto ausente.');
+      return res.status(400).send('Erro: Dados obrigatórios ausentes.');
     }
 
-    console.log(`Pagamento aprovado! Cliente: ${customerEmail}, Produto ID: ${productId}`);
+    console.log(`✅ Pagamento aprovado! Cliente: ${customerEmail}, Produto ID: ${productId}`);
 
     try {
       const hotmartApiUrl = process.env.HOTMART_API_URL;
@@ -36,15 +36,32 @@ app.post('/webhook', async (req, res) => {
         return res.status(500).send('Erro de configuração da Hotmart API.');
       }
 
-      console.log(`🟢 Enviando requisição para Hotmart: ${hotmartApiUrl}`);
-      console.log(`Payload: { buyer_email: ${customerEmail} }`);
+      // Criar o payload conforme esperado pela Hotmart
+      const payload = {
+        event: "CLUB_FIRST_ACCESS",
+        version: "2.0.0",
+        data: {
+          product: {
+            id: productId
+          },
+          user: {
+            email: customerEmail
+          }
+        }
+      };
 
-      const response = await axios.post(hotmartApiUrl, {
-        buyer_email: customerEmail
-      }, {
+      console.log("🟢 Enviando requisição para Hotmart:");
+      console.log("URL:", hotmartApiUrl);
+      console.log("Headers:", {
+        Authorization: `Bearer ${hotmartApiToken}`,
+        "Content-Type": "application/json"
+      });
+      console.log("Payload:", JSON.stringify(payload, null, 2));
+
+      const response = await axios.post(hotmartApiUrl, payload, {
         headers: {
           Authorization: `Bearer ${hotmartApiToken}`,
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         }
       });
 
@@ -62,5 +79,5 @@ app.post('/webhook', async (req, res) => {
 // Configuração da porta para rodar no Railway corretamente
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-  console.log(`Servidor rodando na porta ${port}`);
+  console.log(`🚀 Servidor rodando na porta ${port}`);
 });
