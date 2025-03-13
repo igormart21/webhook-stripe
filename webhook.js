@@ -4,16 +4,26 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const crypto = require('crypto');
 
 const app = express();
-app.use(express.json());
+app.use(express.json()); // Middleware para garantir que o JSON seja lido corretamente
 
-// Rota para verificar se o servidor está rodando
+// Rota para testar se o servidor está rodando
 app.get('/', (req, res) => {
   res.send('Servidor funcionando!');
 });
 
-// Rota para receber eventos do Stripe
+// Webhook para eventos do Stripe
 app.post('/webhook', async (req, res) => {
+  console.log("🟡 Webhook recebido!");
+  console.log("📩 Corpo da requisição:", JSON.stringify(req.body, null, 2));
+
   const event = req.body;
+
+  if (!event || !event.type) {
+    console.error("❌ Erro: Evento indefinido ou JSON vazio.");
+    return res.status(400).send("Erro: Evento inválido ou JSON ausente.");
+  }
+
+  console.log(`✅ Evento recebido: ${event.type}`);
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
@@ -43,7 +53,7 @@ app.post('/webhook', async (req, res) => {
       const payload = {
         id: uniqueId,
         creation_date: Date.now(),
-        event: "PURCHASE_APPROVED", // Alterado para um evento mais genérico e aceito
+        event: "PURCHASE_APPROVED",
         version: "2.0.0",
         data: {
           product: {
@@ -58,11 +68,6 @@ app.post('/webhook', async (req, res) => {
       };
 
       console.log("🟢 Enviando requisição para Hotmart...");
-      console.log("URL:", hotmartApiUrl);
-      console.log("Headers:", {
-        Authorization: `Bearer ${hotmartApiToken}`,
-        "Content-Type": "application/json"
-      });
       console.log("Payload:", JSON.stringify(payload, null, 2));
 
       const response = await axios.post(hotmartApiUrl, payload, {
@@ -85,12 +90,12 @@ app.post('/webhook', async (req, res) => {
       res.status(500).send('Erro ao processar o pagamento.');
     }
   } else {
-    console.error("❌ Evento não reconhecido:", event.type);
-    res.status(400).send('Evento inválido.');
+    console.error(`❌ Evento não reconhecido: ${event.type}`);
+    return res.status(400).send(`Evento inválido: ${event.type}`);
   }
 });
 
-// Configuração da porta no Railway
+// Configuração da porta
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`🚀 Servidor rodando na porta ${port}`);
