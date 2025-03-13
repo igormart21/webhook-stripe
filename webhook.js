@@ -44,6 +44,8 @@ app.post('/webhook', async (req, res) => {
 
     const customerEmail = session.customer_email || session.customer_details?.email;
     const metadata = session.metadata || {};
+    console.log("🔍 Metadados recebidos:", JSON.stringify(metadata, null, 2));
+    
     const productId = metadata.product_id ? parseInt(metadata.product_id, 10) : null;
 
     if (!customerEmail) {
