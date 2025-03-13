@@ -1,71 +1,110 @@
 const express = require('express');
 const axios = require('axios');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const bodyParser = require('body-parser');
+const crypto = require('crypto');
 
 const app = express();
-app.use(express.json()); // Habilita JSON no corpo da requisição
 
-// Rota para testar se o servidor está rodando
-app.get('/', (req, res) => {
-  res.send('Servidor funcionando!');
-});
+// 🔹 Middleware para capturar JSON e RAW BODY (necessário para Stripe)
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Rota para receber os eventos da Stripe
+// Webhook para eventos do Stripe
 app.post('/webhook', async (req, res) => {
+  console.log("🟡 Webhook recebido!");
+
+  // 🔍 Captura e exibe o corpo da requisição para depuração
+  console.log("📩 Corpo da requisição recebido:", req.body);
+
+  // 🔴 Verifica se o JSON está vazio ou indefinido
+  if (!req.body || Object.keys(req.body).length === 0) {
+    console.error("❌ Erro: Corpo da requisição vazio ou não reconhecido.");
+    return res.status(400).send("Erro: JSON vazio ou inválido.");
+  }
+
   const event = req.body;
 
-  // Verifica se o evento é do tipo checkout.session.completed
+  // 🔍 Verifica se o evento contém um tipo válido
+  if (!event.type) {
+    console.error("❌ Erro: Evento não possui um tipo definido.");
+    return res.status(400).send("Erro: Evento inválido.");
+  }
+
+  console.log(`✅ Evento recebido: ${event.type}`);
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-
-    // Garante que o email do cliente seja capturado corretamente
-    const customerEmail = session.customer_email || session.customer_details?.email || null;
-    
-    // Evita erro caso session.metadata seja undefined
+    const customerEmail = session.customer_email || session.customer_details?.email;
     const metadata = session.metadata || {};
-    const productId = metadata.product_id || 'Desconhecido';
-    const productName = metadata.product_name || 'Produto sem nome';
+    const productId = parseInt(metadata.product_id, 10);
 
-    if (!customerEmail) {
-      console.error('Erro: Email do cliente não encontrado.');
-      return res.status(400).send('Erro: Email do cliente é obrigatório.');
+    if (!customerEmail || !productId) {
+      console.error('❌ Erro: Dados obrigatórios ausentes.');
+      return res.status(400).send('Erro: Email e ID do produto são obrigatórios.');
     }
 
-    console.log(`Pagamento aprovado para o produto ${productName}, cliente: ${customerEmail}`);
+    console.log(`✅ Pagamento aprovado! Cliente: ${customerEmail}, Produto ID: ${productId}`);
 
     try {
-      // Criar o cliente no Stripe
-      const customer = await stripe.customers.create({
-        email: customerEmail,
-        description: `Cliente Stripe - Produto: ${productName}`,
-      });
-
-      // Verifica se a URL da Hotmart está configurada corretamente
       const hotmartApiUrl = process.env.HOTMART_API_URL;
-      if (!hotmartApiUrl) {
-        console.error("A URL da Hotmart não está definida.");
+      const hotmartApiToken = process.env.HOTMART_API_TOKEN;
+
+      if (!hotmartApiUrl || !hotmartApiToken) {
+        console.error('⚠️ Erro de configuração da API Hotmart.');
         return res.status(500).send('Erro de configuração da Hotmart API.');
       }
 
-      // Envia a solicitação para liberar acesso ao produto na Hotmart
-      const response = await axios.post(hotmartApiUrl, {
-        customerEmail: customerEmail,
+      const uniqueId = crypto.randomUUID();
+
+      // Estrutura correta do JSON para a Hotmart
+      const payload = {
+        id: uniqueId,
+        creation_date: Date.now(),
+        event: "PURCHASE_APPROVED",
+        version: "2.0.0",
+        data: {
+          product: {
+            id: productId,
+            name: metadata.product_name || "Produto sem nome"
+          },
+          user: {
+            name: metadata.customer_name || "Cliente sem nome",
+            email: customerEmail
+          }
+        }
+      };
+
+      console.log("🟢 Enviando requisição para Hotmart...");
+      console.log("Payload:", JSON.stringify(payload, null, 2));
+
+      const response = await axios.post(hotmartApiUrl, payload, {
+        headers: {
+          Authorization: `Bearer ${hotmartApiToken}`,
+          "Content-Type": "application/json"
+        }
       });
 
-      console.log('Acesso ao produto liberado:', response.data);
+      console.log('✅ Acesso ao produto liberado:', response.data);
       res.status(200).send('Pagamento processado com sucesso.');
     } catch (error) {
-      console.error('Erro ao integrar com o Stripe ou Hotmart:', error);
+      console.error('❌ Erro ao integrar com a Hotmart:');
+      if (error.response) {
+        console.error("🛑 Status:", error.response.status);
+        console.error("🛑 Resposta:", JSON.stringify(error.response.data, null, 2));
+      } else {
+        console.error(error.message);
+      }
       res.status(500).send('Erro ao processar o pagamento.');
     }
   } else {
-    res.status(400).send('Evento inválido.');
+    console.error(`❌ Evento não reconhecido: ${event.type}`);
+    return res.status(400).send(`Evento inválido: ${event.type}`);
   }
 });
 
-// Configuração da porta para rodar no Railway corretamente
+// Configuração da porta
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-  console.log(`Servidor rodando na porta ${port}`);
+  console.log(`🚀 Servidor rodando na porta ${port}`);
 });
-
