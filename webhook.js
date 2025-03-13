@@ -10,6 +10,7 @@ const app = express();
 app.use(bodyParser.raw({ type: 'application/json' }));
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Webhook para eventos do Stripe
 app.post('/webhook', async (req, res) => {
@@ -18,8 +19,18 @@ app.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
+  if (isProduction && !sig) {
+    console.error("❌ Erro: stripe-signature ausente no ambiente de produção.");
+    return res.status(400).send("Erro: Assinatura do Stripe ausente.");
+  }
+
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    if (sig) {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } else {
+      event = JSON.parse(req.body.toString());
+      console.warn("⚠️ Assinatura não fornecida. Webhook sendo processado sem validação.");
+    }
   } catch (err) {
     console.error("❌ Erro ao verificar a assinatura:", err.message);
     return res.status(400).send("Erro: Assinatura inválida.");
