@@ -6,24 +6,24 @@ const crypto = require('crypto');
 const app = express();
 app.use(express.json());
 
-// Rota para testar se o servidor está rodando
+// Rota para verificar se o servidor está rodando
 app.get('/', (req, res) => {
   res.send('Servidor funcionando!');
 });
 
-// Rota para receber os eventos da Stripe
+// Rota para receber eventos do Stripe
 app.post('/webhook', async (req, res) => {
   const event = req.body;
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const customerEmail = session.customer_email || session.customer_details?.email || null;
+    const customerEmail = session.customer_email || session.customer_details?.email;
     const metadata = session.metadata || {};
     const productId = parseInt(metadata.product_id, 10);
 
     if (!customerEmail || !productId) {
-      console.error('Erro: Email do cliente ou ID do produto ausente.');
-      return res.status(400).send('Erro: Dados obrigatórios ausentes.');
+      console.error('❌ Erro: Dados obrigatórios ausentes.');
+      return res.status(400).send('Erro: Email e ID do produto são obrigatórios.');
     }
 
     console.log(`✅ Pagamento aprovado! Cliente: ${customerEmail}, Produto ID: ${productId}`);
@@ -33,17 +33,17 @@ app.post('/webhook', async (req, res) => {
       const hotmartApiToken = process.env.HOTMART_API_TOKEN;
 
       if (!hotmartApiUrl || !hotmartApiToken) {
-        console.error('Erro: Configuração da API Hotmart ausente.');
+        console.error('⚠️ Erro de configuração da API Hotmart.');
         return res.status(500).send('Erro de configuração da Hotmart API.');
       }
 
       const uniqueId = crypto.randomUUID();
 
-      // Criar a estrutura do JSON
+      // Estrutura correta do JSON para a Hotmart
       const payload = {
         id: uniqueId,
         creation_date: Date.now(),
-        event: "PURCHASE_APPROVED", // Alterado para um evento mais comum
+        event: "PURCHASE_APPROVED", // Alterado para um evento mais genérico e aceito
         version: "2.0.0",
         data: {
           product: {
@@ -57,7 +57,7 @@ app.post('/webhook', async (req, res) => {
         }
       };
 
-      console.log("🟢 Enviando requisição para Hotmart:");
+      console.log("🟢 Enviando requisição para Hotmart...");
       console.log("URL:", hotmartApiUrl);
       console.log("Headers:", {
         Authorization: `Bearer ${hotmartApiToken}`,
@@ -77,8 +77,8 @@ app.post('/webhook', async (req, res) => {
     } catch (error) {
       console.error('❌ Erro ao integrar com a Hotmart:');
       if (error.response) {
-        console.error("Status:", error.response.status);
-        console.error("Data:", JSON.stringify(error.response.data, null, 2));
+        console.error("🛑 Status:", error.response.status);
+        console.error("🛑 Resposta:", JSON.stringify(error.response.data, null, 2));
       } else {
         console.error(error.message);
       }
@@ -90,7 +90,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// Configuração da porta para rodar no Railway corretamente
+// Configuração da porta no Railway
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`🚀 Servidor rodando na porta ${port}`);
