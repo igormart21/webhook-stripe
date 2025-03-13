@@ -1,26 +1,34 @@
 const express = require('express');
 const axios = require('axios');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const bodyParser = require('body-parser');
 const crypto = require('crypto');
 
 const app = express();
-app.use(express.json()); // Middleware para garantir que o JSON seja lido corretamente
 
-// Rota para testar se o servidor está rodando
-app.get('/', (req, res) => {
-  res.send('Servidor funcionando!');
-});
+// 🔹 Middleware para capturar JSON e RAW BODY (necessário para Stripe)
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Webhook para eventos do Stripe
 app.post('/webhook', async (req, res) => {
   console.log("🟡 Webhook recebido!");
-  console.log("📩 Corpo da requisição:", JSON.stringify(req.body, null, 2));
+
+  // 🔍 Captura e exibe o corpo da requisição para depuração
+  console.log("📩 Corpo da requisição recebido:", req.body);
+
+  // 🔴 Verifica se o JSON está vazio ou indefinido
+  if (!req.body || Object.keys(req.body).length === 0) {
+    console.error("❌ Erro: Corpo da requisição vazio ou não reconhecido.");
+    return res.status(400).send("Erro: JSON vazio ou inválido.");
+  }
 
   const event = req.body;
 
-  if (!event || !event.type) {
-    console.error("❌ Erro: Evento indefinido ou JSON vazio.");
-    return res.status(400).send("Erro: Evento inválido ou JSON ausente.");
+  // 🔍 Verifica se o evento contém um tipo válido
+  if (!event.type) {
+    console.error("❌ Erro: Evento não possui um tipo definido.");
+    return res.status(400).send("Erro: Evento inválido.");
   }
 
   console.log(`✅ Evento recebido: ${event.type}`);
