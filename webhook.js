@@ -7,8 +7,10 @@ const crypto = require('crypto');
 const app = express();
 
 // 🔹 Middleware para capturar JSON e RAW BODY (necessário para Stripe)
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.raw({ type: 'application/json' }));
+
+// Chave secreta do Stripe para validar a assinatura do webhook
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Webhook para eventos do Stripe
 app.post('/webhook', async (req, res) => {
@@ -17,15 +19,19 @@ app.post('/webhook', async (req, res) => {
   // 🔍 Captura e exibe o corpo da requisição para depuração
   console.log("📩 Corpo da requisição recebido:", req.body);
 
-  // 🔴 Verifica se o JSON está vazio ou indefinido
-  if (!req.body || Object.keys(req.body).length === 0) {
-    console.error("❌ Erro: Corpo da requisição vazio ou não reconhecido.");
-    return res.status(400).send("Erro: JSON vazio ou inválido.");
+  // 🔴 Verifica a assinatura do evento
+  const sig = req.headers['stripe-signature'];
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error("❌ Erro ao verificar a assinatura:", err.message);
+    return res.status(400).send(`Erro: Assinatura inválida.`);
   }
 
-  const event = req.body;
-
-  // 🔍 Verifica se o evento contém um tipo válido
+  // 🔴 Verifica se o evento contém um tipo válido
   if (!event.type) {
     console.error("❌ Erro: Evento não possui um tipo definido.");
     return res.status(400).send("Erro: Evento inválido.");
