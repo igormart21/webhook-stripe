@@ -12,7 +12,34 @@ app.use(bodyParser.raw({ type: 'application/json' }));
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Webhook para eventos do Stripe
+// ✅ Rota para criar sessão de checkout do Stripe
+app.post('/create-checkout-session', async (req, res) => {
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: 'preco_do_stripe', // Substitua pelo preço real configurado no Stripe
+          quantity: 1
+        }
+      ],
+      mode: 'payment',
+      success_url: 'URL_DE_SUCESSO',
+      cancel_url: 'URL_DE_CANCELAMENTO',
+      metadata: {
+        product_id: '4532677', // 🔹 ID do produto da Hotmart
+        customer_email: req.body.email // 🔹 Captura o e-mail enviado pelo front-end
+      }
+    });
+
+    res.json({ id: session.id });
+  } catch (error) {
+    console.error('❌ Erro ao criar sessão do Stripe:', error);
+    res.status(500).send('Erro ao criar sessão de pagamento.');
+  }
+});
+
+// ✅ Webhook para eventos do Stripe
 app.post('/webhook', async (req, res) => {
   console.log("🟡 Webhook recebido!");
 
@@ -47,18 +74,12 @@ app.post('/webhook', async (req, res) => {
     console.log("🔍 Metadados recebidos:", JSON.stringify(metadata, null, 2));
     
     let productId = metadata.product_id ? parseInt(metadata.product_id, 10) : null;
-    
-    // Se o ID do produto não veio do Stripe, verificar se veio da Hotmart
-    if (!productId && metadata.hotmart_product_id) {
-      productId = parseInt(metadata.hotmart_product_id, 10);
-      console.log("🔹 ID do produto obtido da Hotmart.");
-    }
 
     if (!customerEmail) {
       console.error('❌ Erro: Email do cliente não encontrado na sessão.');
     }
     if (!productId) {
-      console.error('❌ Erro: ID do produto não encontrado nos metadados. Verifique Stripe e Hotmart.');
+      console.error('❌ Erro: ID do produto não encontrado nos metadados. Verifique Stripe.');
     }
 
     if (!customerEmail || !productId) {
