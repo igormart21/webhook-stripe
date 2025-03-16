@@ -46,13 +46,19 @@ app.post('/webhook', async (req, res) => {
     const metadata = session.metadata || {};
     console.log("🔍 Metadados recebidos:", JSON.stringify(metadata, null, 2));
     
-    const productId = metadata.product_id ? parseInt(metadata.product_id, 10) : null;
+    let productId = metadata.product_id ? parseInt(metadata.product_id, 10) : null;
+    
+    // Se o ID do produto não veio do Stripe, verificar se veio da Hotmart
+    if (!productId && metadata.hotmart_product_id) {
+      productId = parseInt(metadata.hotmart_product_id, 10);
+      console.log("🔹 ID do produto obtido da Hotmart.");
+    }
 
     if (!customerEmail) {
       console.error('❌ Erro: Email do cliente não encontrado na sessão.');
     }
     if (!productId) {
-      console.error('❌ Erro: ID do produto não encontrado nos metadados.');
+      console.error('❌ Erro: ID do produto não encontrado nos metadados. Verifique Stripe e Hotmart.');
     }
 
     if (!customerEmail || !productId) {
