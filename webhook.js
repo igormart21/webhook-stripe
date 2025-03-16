@@ -19,7 +19,7 @@ app.post('/create-checkout-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'preco_do_stripe', // Substitua pelo preço real configurado no Stripe
+          price: 'preco_do_stripe', // Substitua com o ID do preço real configurado no Stripe
           quantity: 1
         }
       ],
@@ -27,8 +27,8 @@ app.post('/create-checkout-session', async (req, res) => {
       success_url: 'URL_DE_SUCESSO',
       cancel_url: 'URL_DE_CANCELAMENTO',
       metadata: {
-        product_id: '4532677', // 🔹 ID do produto da Hotmart
-        customer_email: req.body.email // 🔹 Captura o e-mail enviado pelo front-end
+        product_id: '4532677', // ID do produto da Hotmart
+        customer_email: req.body.email // Captura o e-mail enviado pelo front-end
       }
     });
 
