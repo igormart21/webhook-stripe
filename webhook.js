@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const app = express();
 
 // 🔹 Middleware para capturar RAW BODY (necessário para Stripe)
-app.use(bodyParser.json());
+app.use(express.json());
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const isProduction = process.env.NODE_ENV === 'production';
