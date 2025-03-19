@@ -15,11 +15,15 @@ const isProduction = process.env.NODE_ENV === 'production';
 // ✅ Rota para criar sessão de checkout do Stripe
 app.post('/create-checkout-session', async (req, res) => {
   try {
+    if (!req.body.email) {
+      return res.status(400).send('Erro: Email do cliente é obrigatório.');
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'preco_do_stripe', // Substitua com o ID do preço real configurado no Stripe
+          price: 'preco_do_stripe', // Substitua pelo preço real configurado no Stripe
           quantity: 1
         }
       ],
@@ -27,11 +31,12 @@ app.post('/create-checkout-session', async (req, res) => {
       success_url: 'URL_DE_SUCESSO',
       cancel_url: 'URL_DE_CANCELAMENTO',
       metadata: {
-        product_id: '4532677', // ID do produto da Hotmart
-        customer_email: req.body.email // Captura o e-mail enviado pelo front-end
+        product_id: '4532677', // 🔹 ID do produto da Hotmart
+        customer_email: req.body.email // 🔹 Captura o e-mail enviado pelo front-end
       }
     });
 
+    console.log("✅ Sessão de checkout criada:", session.id);
     res.json({ id: session.id });
   } catch (error) {
     console.error('❌ Erro ao criar sessão do Stripe:', error);
@@ -40,7 +45,7 @@ app.post('/create-checkout-session', async (req, res) => {
 });
 
 // ✅ Webhook para eventos do Stripe
-app.post('/webhook', async (req, res) => {
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   console.log("🟡 Webhook recebido!");
 
   const sig = req.headers['stripe-signature'];
@@ -67,22 +72,14 @@ app.post('/webhook', async (req, res) => {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    console.log("🔹 Dados da sessão:", JSON.stringify(session, null, 2));
+    console.log("🔹 Dados da sessão recebida:", JSON.stringify(session, null, 2));
 
-    const customerEmail = session.customer_email || session.customer_details?.email;
     const metadata = session.metadata || {};
-    console.log("🔍 Metadados recebidos:", JSON.stringify(metadata, null, 2));
-    
-    let productId = metadata.product_id ? parseInt(metadata.product_id, 10) : null;
-
-    if (!customerEmail) {
-      console.error('❌ Erro: Email do cliente não encontrado na sessão.');
-    }
-    if (!productId) {
-      console.error('❌ Erro: ID do produto não encontrado nos metadados. Verifique Stripe.');
-    }
+    const customerEmail = metadata.customer_email || session.customer_details?.email;
+    const productId = metadata.product_id ? parseInt(metadata.product_id, 10) : null;
 
     if (!customerEmail || !productId) {
+      console.error(`❌ Erro: Dados ausentes. Metadata: ${JSON.stringify(metadata, null, 2)}`);
       return res.status(400).send('Erro: Email e ID do produto são obrigatórios.');
     }
 
@@ -98,7 +95,6 @@ app.post('/webhook', async (req, res) => {
       }
 
       const uniqueId = crypto.randomUUID();
-
       const payload = {
         id: uniqueId,
         creation_date: Date.now(),
