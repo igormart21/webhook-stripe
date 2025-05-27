@@ -82,6 +82,8 @@ app.post('/webhook', async (req, res) => {
       process.env.STRIPE_WEBHOOK_SECRET
     );
     console.log('Assinatura verificada com sucesso');
+    console.log('Tipo do evento:', event.type);
+    console.log('Dados do evento:', JSON.stringify(event.data.object, null, 2));
   } catch (err) {
     console.error('Erro na assinatura do webhook:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -105,6 +107,17 @@ app.post('/webhook', async (req, res) => {
       console.error('Erro ao processar pagamento:', error);
       return res.status(500).json({ error: 'Erro ao processar pagamento' });
     }
+  } else if (event.type === 'payment_method.created') {
+    console.log('Evento payment_method.created recebido');
+    const paymentMethod = event.data.object;
+    
+    // Verificar se é um cartão de teste
+    if (paymentMethod.card && paymentMethod.card.last4 === '4242') {
+      console.log('Cartão de teste detectado');
+    }
+    
+    // Aqui você pode adicionar lógica adicional para lidar com o método de pagamento
+    console.log('Dados do método de pagamento:', JSON.stringify(paymentMethod, null, 2));
   } else {
     console.log('Evento recebido:', event.type);
   }
