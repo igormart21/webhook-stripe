@@ -43,13 +43,36 @@ async function addMemberToHotmart(email, name) {
     console.log(`Tentando adicionar membro: ${email}`);
     const accessToken = await getHotmartAccessToken();
     
+    // Primeiro, vamos verificar se o produto existe
+    console.log('Verificando produto na Hotmart...');
+    const productResponse = await axios.get(
+      `https://developers.hotmart.com/payments/api/v1/products/${process.env.HOTMART_PRODUCT_ID}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    console.log('Produto encontrado:', productResponse.data);
+
+    // Agora vamos adicionar o membro
+    console.log('Adicionando membro à Hotmart...');
     const response = await axios.post(
       `https://developers.hotmart.com/payments/api/v1/sales/history`,
       {
         product_id: process.env.HOTMART_PRODUCT_ID,
         email: email,
         name: name,
-        status: 'APPROVED'
+        status: 'APPROVED',
+        source: 'API',
+        payment_type: 'CREDITCARD',
+        payment_status: 'APPROVED',
+        payment_date: new Date().toISOString(),
+        price: {
+          currency: 'BRL',
+          value: 10.00
+        }
       },
       {
         headers: {
@@ -59,10 +82,21 @@ async function addMemberToHotmart(email, name) {
       }
     );
     
-    console.log('Resposta da Hotmart:', response.data);
-    return response.data;
+    console.log('Resposta completa da Hotmart:', JSON.stringify(response.data, null, 2));
+    
+    if (response.data && response.data.purchase) {
+      console.log('Compra registrada com sucesso:', response.data.purchase);
+      return response.data;
+    } else {
+      throw new Error('Resposta da Hotmart não contém dados de compra');
+    }
   } catch (error) {
-    console.error('Erro ao adicionar membro à Hotmart:', error.response?.data || error.message);
+    console.error('Erro detalhado ao adicionar membro à Hotmart:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers
+    });
     throw error;
   }
 }
