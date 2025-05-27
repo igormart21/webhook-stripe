@@ -56,23 +56,27 @@ async function addMemberToHotmart(email, name) {
     );
     console.log('Produto encontrado:', productResponse.data);
 
-    // Agora vamos adicionar o membro
+    // Agora vamos adicionar o membro usando a API de assinaturas
     console.log('Adicionando membro à Hotmart...');
     const response = await axios.post(
-      `https://developers.hotmart.com/payments/api/v1/sales/history`,
+      `https://developers.hotmart.com/payments/api/v1/subscriptions`,
       {
         product_id: process.env.HOTMART_PRODUCT_ID,
-        email: email,
-        name: name,
-        status: 'APPROVED',
+        subscriber: {
+          email: email,
+          name: name
+        },
+        payment: {
+          status: 'APPROVED',
+          payment_type: 'CREDITCARD',
+          payment_date: new Date().toISOString(),
+          price: {
+            currency: 'BRL',
+            value: 10.00
+          }
+        },
         source: 'API',
-        payment_type: 'CREDITCARD',
-        payment_status: 'APPROVED',
-        payment_date: new Date().toISOString(),
-        price: {
-          currency: 'BRL',
-          value: 10.00
-        }
+        status: 'ACTIVE'
       },
       {
         headers: {
@@ -84,11 +88,12 @@ async function addMemberToHotmart(email, name) {
     
     console.log('Resposta completa da Hotmart:', JSON.stringify(response.data, null, 2));
     
-    if (response.data && response.data.purchase) {
-      console.log('Compra registrada com sucesso:', response.data.purchase);
+    if (response.data && (response.data.subscription || response.data.purchase)) {
+      console.log('Assinatura/Compra registrada com sucesso:', response.data.subscription || response.data.purchase);
       return response.data;
     } else {
-      throw new Error('Resposta da Hotmart não contém dados de compra');
+      console.error('Resposta inesperada da Hotmart:', response.data);
+      throw new Error('Resposta da Hotmart não contém dados de assinatura/compra');
     }
   } catch (error) {
     console.error('Erro detalhado ao adicionar membro à Hotmart:', {
