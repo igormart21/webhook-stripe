@@ -47,14 +47,13 @@ async function getHotmartAccessToken() {
   }
 }
 
-// Função para adicionar membro à área de membros da Hotmart
+// Função para adicionar membro à área de membros da Hotmart usando Hottok
 async function addMemberToHotmart(email, name) {
   try {
     console.log(`Tentando adicionar membro: ${email}`);
-    const accessToken = await getHotmartAccessToken();
 
-    // Adicionando membro à área de membros
-    console.log('Adicionando membro à área de membros da Hotmart...');
+    // Adicionando membro à área de membros usando Hottok
+    console.log('Adicionando membro à área de membros da Hotmart com Hottok...');
     const response = await axios.post(
       `https://api.hotmart.com/members/api/v3/member`,
       {
@@ -64,7 +63,7 @@ async function addMemberToHotmart(email, name) {
       },
       {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'hottok': process.env.HOTMART_HOTTOK,
           'Content-Type': 'application/json'
         }
       }
@@ -79,12 +78,21 @@ async function addMemberToHotmart(email, name) {
       throw new Error('Resposta da Hotmart não indica sucesso ao adicionar membro');
     }
   } catch (error) {
-    console.error('Erro detalhado ao adicionar membro à Hotmart:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers
-    });
+    if (error.response) {
+      console.error('Erro detalhado ao adicionar membro à Hotmart:', {
+        message: error.message,
+        data: error.response.data,
+        status: error.response.status,
+        headers: error.response.headers
+      });
+    } else {
+      console.error('Erro detalhado ao adicionar membro à Hotmart:', {
+        message: error.message,
+        response: error.response,
+        status: error.status,
+        headers: error.headers
+      });
+    }
     throw error;
   }
 }
