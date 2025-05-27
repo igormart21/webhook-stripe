@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: webhook-stripe-hotmart
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: HOTMART_CLIENT_ID
+        sync: false
+      - key: HOTMART_CLIENT_SECRET
+        sync: false
+      - key: HOTMART_PRODUCT_ID
+        sync: false 
