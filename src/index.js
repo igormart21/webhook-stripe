@@ -6,6 +6,11 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
+// Rota de teste
+app.get('/', (req, res) => {
+  res.json({ status: 'Webhook está funcionando!' });
+});
+
 // Função para obter token de acesso da Hotmart
 async function getHotmartAccessToken() {
   try {
@@ -16,7 +21,7 @@ async function getHotmartAccessToken() {
     });
     return response.data.access_token;
   } catch (error) {
-    console.error('Erro ao obter token da Hotmart:', error);
+    console.error('Erro ao obter token da Hotmart:', error.response?.data || error.message);
     throw error;
   }
 }
@@ -42,9 +47,10 @@ async function addMemberToHotmart(email, name) {
       }
     );
     
+    console.log('Resposta da Hotmart:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Erro ao adicionar membro à Hotmart:', error);
+    console.error('Erro ao adicionar membro à Hotmart:', error.response?.data || error.message);
     throw error;
   }
 }
@@ -69,6 +75,8 @@ app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) =
   // Lidar com o evento de pagamento bem-sucedido
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
+    console.log('Evento recebido:', event.type);
+    console.log('Dados da sessão:', session);
     
     try {
       // Adicionar membro à Hotmart
