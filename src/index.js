@@ -66,13 +66,13 @@ async function addMemberToHotmart(email, name) {
     );
     console.log('Produto encontrado:', productResponse.data);
 
-    // Agora vamos adicionar o membro usando a API de assinaturas
+    // Agora vamos adicionar o membro usando a API de vendas
     console.log('Adicionando membro à Hotmart...');
     const response = await axios.post(
-      `https://developers.hotmart.com/payments/api/v1/subscriptions`,
+      `https://developers.hotmart.com/payments/api/v1/sales`,
       {
         product_id: process.env.HOTMART_PRODUCT_ID,
-        subscriber: {
+        buyer: {
           email: email,
           name: name
         },
@@ -86,7 +86,7 @@ async function addMemberToHotmart(email, name) {
           }
         },
         source: 'API',
-        status: 'ACTIVE'
+        status: 'APPROVED'
       },
       {
         headers: {
@@ -98,12 +98,12 @@ async function addMemberToHotmart(email, name) {
     
     console.log('Resposta completa da Hotmart:', JSON.stringify(response.data, null, 2));
     
-    if (response.data && (response.data.subscription || response.data.purchase)) {
-      console.log('Assinatura/Compra registrada com sucesso:', response.data.subscription || response.data.purchase);
+    if (response.data && response.data.sale) {
+      console.log('Venda registrada com sucesso:', response.data.sale);
       return response.data;
     } else {
       console.error('Resposta inesperada da Hotmart:', response.data);
-      throw new Error('Resposta da Hotmart não contém dados de assinatura/compra');
+      throw new Error('Resposta da Hotmart não contém dados de venda');
     }
   } catch (error) {
     console.error('Erro detalhado ao adicionar membro à Hotmart:', {
