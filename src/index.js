@@ -52,41 +52,15 @@ async function addMemberToHotmart(email, name) {
   try {
     console.log(`Tentando adicionar membro: ${email}`);
     const accessToken = await getHotmartAccessToken();
-    
-    // Primeiro, vamos verificar se o produto existe
-    console.log('Verificando produto na Hotmart...');
-    const productResponse = await axios.get(
-      `https://developers.hotmart.com/payments/api/v1/products/${process.env.HOTMART_PRODUCT_ID}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    console.log('Produto encontrado:', productResponse.data);
 
-    // Agora vamos adicionar o membro usando a API de vendas
-    console.log('Adicionando membro à Hotmart...');
+    // Adicionando membro à área de membros
+    console.log('Adicionando membro à área de membros da Hotmart...');
     const response = await axios.post(
-      `https://developers.hotmart.com/payments/api/v1/sales`,
+      `https://api.hotmart.com/members/api/v3/member`,
       {
-        product_id: process.env.HOTMART_PRODUCT_ID,
-        buyer: {
-          email: email,
-          name: name
-        },
-        payment: {
-          status: 'APPROVED',
-          payment_type: 'CREDITCARD',
-          payment_date: new Date().toISOString(),
-          price: {
-            currency: 'BRL',
-            value: 10.00
-          }
-        },
-        source: 'API',
-        status: 'APPROVED'
+        email: email,
+        name: name,
+        product_id: process.env.HOTMART_PRODUCT_ID
       },
       {
         headers: {
@@ -95,15 +69,14 @@ async function addMemberToHotmart(email, name) {
         }
       }
     );
-    
+
     console.log('Resposta completa da Hotmart:', JSON.stringify(response.data, null, 2));
-    
-    if (response.data && response.data.sale) {
-      console.log('Venda registrada com sucesso:', response.data.sale);
+    if (response.data && response.data.success) {
+      console.log('Membro adicionado com sucesso à área de membros!');
       return response.data;
     } else {
       console.error('Resposta inesperada da Hotmart:', response.data);
-      throw new Error('Resposta da Hotmart não contém dados de venda');
+      throw new Error('Resposta da Hotmart não indica sucesso ao adicionar membro');
     }
   } catch (error) {
     console.error('Erro detalhado ao adicionar membro à Hotmart:', {
