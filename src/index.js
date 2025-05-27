@@ -8,6 +8,8 @@ const app = express();
 // Middleware para log de todas as requisições
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
   next();
 });
 
@@ -18,6 +20,14 @@ app.use(express.json());
 // Rota de teste
 app.get('/', (req, res) => {
   res.json({ status: 'Webhook está funcionando!' });
+});
+
+// Rota de teste para webhook
+app.post('/webhook-test', (req, res) => {
+  console.log('Teste de webhook recebido');
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  res.json({ status: 'Teste recebido com sucesso' });
 });
 
 // Função para obter token de acesso da Hotmart
