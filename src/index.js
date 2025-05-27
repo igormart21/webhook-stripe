@@ -83,7 +83,15 @@ app.post('/webhook', async (req, res) => {
     );
     console.log('Assinatura verificada com sucesso');
     console.log('Tipo do evento:', event.type);
+    console.log('Modo do evento:', event.livemode ? 'Live' : 'Test');
     console.log('Dados do evento:', JSON.stringify(event.data.object, null, 2));
+
+    // Verificar se o modo do evento corresponde ao modo da chave
+    const isTestMode = process.env.STRIPE_SECRET_KEY.startsWith('sk_test_');
+    if (event.livemode !== !isTestMode) {
+      console.error('Erro: Modo do evento não corresponde ao modo da chave');
+      return res.status(400).json({ error: 'Modo do evento não corresponde ao modo da chave' });
+    }
   } catch (err) {
     console.error('Erro na assinatura do webhook:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
