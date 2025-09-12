@@ -161,7 +161,6 @@ const SearchCards = () => {
                 <SelectValue placeholder="Todas as Coleções" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as Coleções</SelectItem>
                 {sets.map(set => (
                   <SelectItem key={set} value={set}>{set}</SelectItem>
                 ))}
@@ -173,7 +172,6 @@ const SearchCards = () => {
                 <SelectValue placeholder="Todos os Tipos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os Tipos</SelectItem>
                 {types.map(type => (
                   <SelectItem key={type} value={type}>
                     <div className="flex items-center gap-2">
