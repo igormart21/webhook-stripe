@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,43 +17,138 @@ import {
   BarChart3
 } from "lucide-react";
 import Header from "@/components/Header";
+import { CreateAlbumModal } from "@/components/CreateAlbumModal";
+import { EditAlbumModal } from "@/components/EditAlbumModal";
+import { ShareAlbumModal } from "@/components/ShareAlbumModal";
+import { albumService } from "@/services/albumService";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [albums, setAlbums] = useState<any[]>([]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedAlbum, setSelectedAlbum] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  // Mock data for albums
-  const albums = [
-    {
-      id: 1,
-      name: "Coleção Base Set",
-      description: "Cartas clássicas do primeiro set de Pokémon TCG",
-      cardsCount: 45,
-      totalCards: 102,
-      createdAt: "2024-01-15",
-      isPublic: true,
-      coverCard: "Charizard"
-    },
-    {
-      id: 2,
-      name: "Gym Heroes",
-      description: "Cartas dos líderes de ginásio",
-      cardsCount: 28,
-      totalCards: 132,
-      createdAt: "2024-02-20",
-      isPublic: false,
-      coverCard: "Lt. Surge's Raichu"
-    },
-    {
-      id: 3,
-      name: "Coleção EX",
-      description: "Cartas raras EX e GX",
-      cardsCount: 67,
-      totalCards: 89,
-      createdAt: "2024-03-10",
-      isPublic: true,
-      coverCard: "Pikachu EX"
+  // Carregar álbuns do usuário
+  useEffect(() => {
+    const loadAlbums = async () => {
+      console.log('Carregando álbuns...', { user: user?.id });
+      
+      if (!user) {
+        console.log('Usuário não logado, usando dados mock');
+        setAlbums([
+          {
+            id: 1,
+            name: "Coleção Base Set",
+            description: "Cartas clássicas do primeiro set de Pokémon TCG",
+            cardsCount: 45,
+            totalCards: 102,
+            created_at: "2024-01-15",
+            is_public: true,
+            coverCard: "Charizard"
+          }
+        ]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log('Buscando álbuns do usuário:', user.id);
+        const userAlbums = await albumService.getUserAlbums(user.id);
+        console.log('Álbuns encontrados:', userAlbums);
+        
+        // Carregar contagem de cartas para cada álbum
+        const albumsWithCounts = await Promise.all(
+          userAlbums.map(async (album) => {
+            try {
+              const albumCards = await albumService.getAlbumCards(album.id);
+              return {
+                ...album,
+                cardsCount: albumCards.length,
+                totalCards: albumCards.length // Por enquanto, usar o mesmo valor
+              };
+            } catch (error) {
+              console.error(`Erro ao carregar cartas do álbum ${album.id}:`, error);
+              return {
+                ...album,
+                cardsCount: 0,
+                totalCards: 0
+              };
+            }
+          })
+        );
+        
+        setAlbums(albumsWithCounts);
+      } catch (error) {
+        console.error('Erro ao carregar álbuns:', error);
+        // Em caso de erro, usar dados mock temporariamente
+        setAlbums([
+          {
+            id: 1,
+            name: "Coleção Base Set",
+            description: "Cartas clássicas do primeiro set de Pokémon TCG",
+            cardsCount: 45,
+            totalCards: 102,
+            created_at: "2024-01-15",
+            is_public: true,
+            coverCard: "Charizard"
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAlbums();
+  }, [user]);
+
+  const handleCreateAlbum = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleAlbumCreated = () => {
+    // Recarregar álbuns após criação
+    if (user) {
+      albumService.getUserAlbums(user.id).then(setAlbums).catch(console.error);
     }
-  ];
+  };
+
+  const handleEditAlbum = (album: any) => {
+    setSelectedAlbum(album);
+    setIsEditModalOpen(true);
+  };
+
+  const handleShareAlbum = (album: any) => {
+    setSelectedAlbum(album);
+    setIsShareModalOpen(true);
+  };
+
+  const handleAlbumUpdated = () => {
+    // Recarregar álbuns após edição
+    if (user) {
+      albumService.getUserAlbums(user.id).then(setAlbums).catch(console.error);
+    }
+  };
+
+  const handleDeleteAlbum = async (albumId: string) => {
+    if (confirm('Tem certeza que deseja deletar este álbum? Esta ação não pode ser desfeita.')) {
+      try {
+        await albumService.deleteAlbum(albumId);
+        // Recarregar álbuns após deleção
+        if (user) {
+          const updatedAlbums = await albumService.getUserAlbums(user.id);
+          setAlbums(updatedAlbums);
+        }
+      } catch (error) {
+        console.error('Erro ao deletar álbum:', error);
+        alert('Erro ao deletar álbum. Tente novamente.');
+      }
+    }
+  };
 
   const filteredAlbums = albums.filter(album => 
     album.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -74,7 +170,12 @@ const Dashboard = () => {
             </p>
           </div>
           
-          <Button variant="hero" size="lg" className="gap-3 w-full lg:w-auto">
+          <Button 
+            variant="hero" 
+            size="lg" 
+            className="gap-3 w-full lg:w-auto"
+            onClick={handleCreateAlbum}
+          >
             <Plus className="w-5 h-5" />
             Criar Novo Álbum
           </Button>
@@ -160,8 +261,16 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Carregando álbuns...</p>
+          </div>
+        )}
+
         {/* Albums Grid */}
-        {filteredAlbums.length === 0 ? (
+        {!loading && filteredAlbums.length === 0 ? (
           <Card className="pokemon-card p-12 text-center">
             <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-card-foreground mb-2">
@@ -170,7 +279,7 @@ const Dashboard = () => {
             <p className="text-muted-foreground mb-6">
               {searchTerm ? "Tente ajustar sua busca" : "Crie seu primeiro álbum para começar"}
             </p>
-            <Button variant="hero" className="gap-3">
+            <Button variant="hero" className="gap-3" onClick={handleCreateAlbum}>
               <Plus className="w-4 h-4" />
               Criar Álbum
             </Button>
@@ -188,7 +297,7 @@ const Dashboard = () => {
                       {album.description}
                     </p>
                   </div>
-                  {album.isPublic && (
+                  {album.is_public && (
                     <Badge variant="secondary" className="ml-3">
                       <Share2 className="w-3 h-3 mr-1" />
                       Público
@@ -198,32 +307,38 @@ const Dashboard = () => {
 
                 <div className="mb-4">
                   <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                    <span>{album.cardsCount}/{album.totalCards} cartas</span>
-                    <span>{Math.round((album.cardsCount / album.totalCards) * 100)}%</span>
+                    <span>{album.cardsCount || 0} cartas</span>
+                    <span>{album.cardsCount > 0 ? '100%' : '0%'}</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div 
                       className="h-2 bg-gradient-primary rounded-full transition-all duration-300"
-                      style={{ width: `${(album.cardsCount / album.totalCards) * 100}%` }}
+                      style={{ width: album.cardsCount > 0 ? '100%' : '0%' }}
                     />
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center text-xs text-muted-foreground mb-4">
-                  <span>Criado em {new Date(album.createdAt).toLocaleDateString('pt-BR')}</span>
-                  <span className="font-medium">{album.coverCard}</span>
+                  <span>Criado em {new Date(album.created_at).toLocaleDateString('pt-BR')}</span>
+                  <span className="font-medium">{album.cardsCount > 0 ? `${album.cardsCount} cartas` : 'Vazio'}</span>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 gap-2">
-                    <Eye className="w-4 h-4" />
-                    Ver
-                  </Button>
-                  <Button variant="ghost" size="sm" className="gap-2">
+                  <Link to={`/album/${album.id}`}>
+                    <Button variant="outline" size="sm" className="flex-1 gap-2">
+                      <Eye className="w-4 h-4" />
+                      Ver
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" size="sm" className="gap-2" onClick={() => handleEditAlbum(album)}>
                     <Edit3 className="w-4 h-4" />
                     Editar
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                  <Button variant="ghost" size="sm" className="gap-2" onClick={() => handleShareAlbum(album)}>
+                    <Share2 className="w-4 h-4" />
+                    Compartilhar
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAlbum(album.id)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -232,6 +347,28 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+
+      {/* Create Album Modal */}
+      <CreateAlbumModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleAlbumCreated}
+      />
+
+      {/* Edit Album Modal */}
+      <EditAlbumModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        album={selectedAlbum}
+        onSuccess={handleAlbumUpdated}
+      />
+
+      {/* Share Album Modal */}
+      <ShareAlbumModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        album={selectedAlbum}
+      />
     </div>
   );
 };

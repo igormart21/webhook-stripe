@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Heart, Github, Twitter, Mail, BookOpen } from "lucide-react";
-import pokeballIcon from "@/assets/pokeball-icon.png";
+import logo from "@/assets/logo.png";
 
 const Footer = () => {
   return (
@@ -12,12 +12,12 @@ const Footer = () => {
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <img 
-                src={pokeballIcon} 
-                alt="Pokémon TCG Album" 
+                src={logo} 
+                alt="Pokédex" 
                 className="w-8 h-8"
               />
               <div>
-                <h3 className="text-lg font-bold gradient-text">Pokémon TCG Album</h3>
+                <h3 className="text-lg font-bold gradient-text">Pokédex</h3>
                 <span className="text-sm text-muted-foreground">Digital Collection Manager</span>
               </div>
             </div>
@@ -105,7 +105,7 @@ const Footer = () => {
           </div>
           
           <div className="flex flex-col md:flex-row items-center gap-4 text-sm text-muted-foreground">
-            <span>© 2024 Pokémon TCG Album. Todos os direitos reservados.</span>
+            <span>© 2024 Pokédex. Todos os direitos reservados.</span>
             <div className="flex gap-4">
               <Button variant="link" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary">
                 Privacidade

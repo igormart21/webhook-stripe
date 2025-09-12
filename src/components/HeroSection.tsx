@@ -26,22 +26,22 @@ const HeroSection = () => {
       <div className="relative z-10 container mx-auto px-4 text-center">
         <div className="max-w-4xl mx-auto">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8">
-            <Sparkles className="w-4 h-4 text-secondary" />
-            <span className="text-sm font-medium text-white">Organize sua coleção digital</span>
+          <div className="inline-flex items-center gap-2 bg-black/20 backdrop-blur-sm border border-white/30 rounded-full px-4 py-2 mb-8 shadow-lg">
+            <Sparkles className="w-4 h-4 text-yellow-300" />
+            <span className="text-sm font-medium text-white drop-shadow-md">Organize sua coleção digital</span>
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-2xl">
             Seu Álbum de Cartas
             <br />
-            <span className="bg-gradient-to-r from-secondary via-white to-secondary bg-clip-text text-transparent">
-              Pokémon TCG
+            <span className="bg-gradient-to-r from-yellow-300 via-white to-yellow-300 bg-clip-text text-transparent drop-shadow-xl">
+              Pokédex
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-lg md:text-xl text-white/90 mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-white mb-12 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
             Crie, organize e compartilhe sua coleção de cartas Pokémon TCG de forma digital. 
             Busque cartas, monte seus álbuns favoritos e compartilhe com a comunidade!
           </p>
@@ -66,33 +66,33 @@ const HeroSection = () => {
 
           {/* Features Cards */}
           <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20 p-6 pokemon-card">
-              <div className="flex flex-col items-center text-center text-white">
-                <div className="w-12 h-12 bg-gradient-primary rounded-lg flex items-center justify-center mb-4">
-                  <BookOpen className="w-6 h-6" />
+            <Card className="bg-black/20 backdrop-blur-sm border-white/30 p-6 pokemon-card shadow-2xl">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-primary rounded-lg flex items-center justify-center mb-4 shadow-lg">
+                  <BookOpen className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2">Organize</h3>
-                <p className="text-sm text-white/80">Crie álbuns personalizados e adicione suas cartas favoritas</p>
+                <h3 className="font-bold mb-2 text-white drop-shadow-lg">Organize</h3>
+                <p className="text-sm text-white/90 drop-shadow-md">Crie álbuns personalizados e adicione suas cartas favoritas</p>
               </div>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20 p-6 pokemon-card">
-              <div className="flex flex-col items-center text-center text-white">
-                <div className="w-12 h-12 bg-gradient-secondary rounded-lg flex items-center justify-center mb-4">
-                  <Zap className="w-6 h-6 text-secondary-foreground" />
+            <Card className="bg-black/20 backdrop-blur-sm border-white/30 p-6 pokemon-card shadow-2xl">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-secondary rounded-lg flex items-center justify-center mb-4 shadow-lg">
+                  <Zap className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2">Busque</h3>
-                <p className="text-sm text-white/80">Encontre cartas pelo nome ou número usando nossa base de dados</p>
+                <h3 className="font-bold mb-2 text-white drop-shadow-lg">Busque</h3>
+                <p className="text-sm text-white/90 drop-shadow-md">Encontre cartas pelo nome ou número usando nossa base de dados</p>
               </div>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20 p-6 pokemon-card">
-              <div className="flex flex-col items-center text-center text-white">
-                <div className="w-12 h-12 bg-gradient-accent rounded-lg flex items-center justify-center mb-4">
-                  <Share2 className="w-6 h-6" />
+            <Card className="bg-black/20 backdrop-blur-sm border-white/30 p-6 pokemon-card shadow-2xl">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-accent rounded-lg flex items-center justify-center mb-4 shadow-lg">
+                  <Share2 className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2">Compartilhe</h3>
-                <p className="text-sm text-white/80">Gere links públicos para mostrar sua coleção para amigos</p>
+                <h3 className="font-bold mb-2 text-white drop-shadow-lg">Compartilhe</h3>
+                <p className="text-sm text-white/90 drop-shadow-md">Gere links públicos para mostrar sua coleção para amigos</p>
               </div>
             </Card>
           </div>
