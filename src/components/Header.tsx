@@ -21,7 +21,7 @@ const Header = ({ currentPage = 'home' }: HeaderProps) => {
               className="w-8 h-8 float-animation"
             />
             <div className="flex flex-col">
-              <h1 className="text-lg font-bold gradient-text">Pokédx TCG</h1>
+              <h1 className="text-lg font-bold gradient-text">TCG Album</h1>
               <span className="text-xs text-muted-foreground">Pokémon Collection</span>
             </div>
           </Link>
@@ -69,7 +69,7 @@ const Header = ({ currentPage = 'home' }: HeaderProps) => {
               Entrar
             </Button>
             <Button variant="hero" size="sm" className="gap-2">
-              <img src={pokeballIcon} alt="" className="w-4 h-4" />
+              <UserPlus className="w-4 h-4" />
               Cadastrar
             </Button>
           </div>
