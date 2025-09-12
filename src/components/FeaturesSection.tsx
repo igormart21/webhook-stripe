@@ -11,6 +11,7 @@ import {
   ArrowRight,
   CheckCircle 
 } from "lucide-react";
+import pokeballIcon from "@/assets/pokeball-icon.png";
 
 const FeaturesSection = () => {
   const features = [
@@ -84,7 +85,7 @@ const FeaturesSection = () => {
             >
               <div className="flex flex-col items-start">
                 <div className={`w-12 h-12 ${feature.color} rounded-lg flex items-center justify-center mb-4 shadow-card`}>
-                  <feature.icon className="w-6 h-6 text-white" />
+                  <feature.icon className="w-6 h-6 text-primary-foreground" />
                 </div>
                 <h3 className="text-xl font-semibold mb-3 text-card-foreground">{feature.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
@@ -107,12 +108,13 @@ const FeaturesSection = () => {
                 </div>
               ))}
             </div>
-            <Link to="/dashboard">
-              <Button variant="hero" size="lg" className="gap-3">
-                Começar Agora
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
+                  <Link to="/dashboard">
+                    <Button variant="hero" size="lg" className="gap-3">
+                      <img src={pokeballIcon} alt="" className="w-4 h-4" />
+                      Começar Agora
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
           </div>
 
           <div className="relative">
@@ -126,6 +128,7 @@ const FeaturesSection = () => {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link to="/dashboard">
                     <Button variant="secondary" size="lg" className="gap-2">
+                      <img src={pokeballIcon} alt="" className="w-4 h-4" />
                       Criar Conta Grátis
                     </Button>
                   </Link>
