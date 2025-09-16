@@ -17,7 +17,15 @@ import {
   Edit3,
   Star,
   Zap,
-  Shield
+  Shield,
+  X,
+  Calendar,
+  User,
+  Eye,
+  Heart,
+  BarChart3,
+  Trophy,
+  Sparkles
 } from "lucide-react";
 import Header from "@/components/Header";
 import { albumService } from "@/services/albumService";
@@ -25,6 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AlbumCardGrid } from "@/components/AlbumCardGrid";
 import { ShareAlbumModal } from "@/components/ShareAlbumModal";
 import { EditAlbumModal } from "@/components/EditAlbumModal";
+import { AddCardToAlbumModal } from "@/components/AddCardToAlbumModal";
 
 const AlbumView = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +44,10 @@ const AlbumView = () => {
   const [loading, setLoading] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddToAlbumOpen, setIsAddToAlbumOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterType, setFilterType] = useState<string>('');
+  const [filterRarity, setFilterRarity] = useState<string>('');
   const { user } = useAuth();
 
   // Carregar dados do álbum
@@ -45,17 +58,24 @@ const AlbumView = () => {
       try {
         const album = await albumService.getAlbumById(id);
         if (album) {
-          setAlbumData({
-            ...album,
-            isOwn: user?.id === album.user_id,
-            cardsCount: 0, // Será calculado quando carregarmos as cartas
-            totalCards: 0
-          });
+          // Verificar se o álbum é público ou se o usuário é o dono
+          if (!album.is_public && user?.id !== album.user_id) {
+            // Álbum privado e usuário não é o dono - redirecionar
+            window.location.href = '/';
+            return;
+          }
 
           // Carregar cartas do álbum
           const albumCards = await albumService.getAlbumCards(id);
           console.log('Cartas do álbum:', albumCards);
           setCards(albumCards);
+
+          setAlbumData({
+            ...album,
+            isOwn: user?.id === album.user_id,
+            cardsCount: albumCards.length,
+            totalCards: albumCards.length
+          });
         }
       } catch (error) {
         console.error('Erro ao carregar álbum:', error);
@@ -67,11 +87,15 @@ const AlbumView = () => {
     loadAlbum();
   }, [id, user]);
 
-  // Filtrar cartas baseado na busca
-  const filteredCards = cards.filter(card => 
-    card.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    card.number?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar cartas baseado na busca e filtros
+  const filteredCards = cards.filter(card => {
+    const matchesSearch = card.card_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         card.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Aqui você pode adicionar mais filtros baseados nos detalhes da carta
+    // Por enquanto, apenas o filtro de busca está implementado
+    return matchesSearch;
+  });
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
@@ -116,16 +140,36 @@ const AlbumView = () => {
     if (id) {
       try {
         const album = await albumService.getAlbumById(id);
+        const albumCards = await albumService.getAlbumCards(id);
         if (album) {
           setAlbumData({
             ...album,
             isOwn: user?.id === album.user_id,
-            cardsCount: cards.length,
-            totalCards: cards.length
+            cardsCount: albumCards.length,
+            totalCards: albumCards.length
           });
+          setCards(albumCards);
         }
       } catch (error) {
         console.error('Erro ao recarregar álbum:', error);
+      }
+    }
+  };
+
+  const handleAddCardSuccess = async () => {
+    // Recarregar cartas do álbum
+    if (id) {
+      try {
+        const albumCards = await albumService.getAlbumCards(id);
+        setCards(albumCards);
+        // Atualizar contador de cartas
+        setAlbumData(prev => ({
+          ...prev,
+          cardsCount: albumCards.length,
+          totalCards: albumCards.length
+        }));
+      } catch (error) {
+        console.error('Erro ao recarregar cartas:', error);
       }
     }
   };
@@ -181,61 +225,148 @@ const AlbumView = () => {
           <span className="text-sm text-muted-foreground">{albumData.name}</span>
         </div>
 
-        {/* Album Header */}
-        <Card className="pokemon-card p-6 md:p-8 mb-8">
-          <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold gradient-text">
+        {/* Hero Section */}
+        <div className="relative overflow-hidden rounded-2xl mb-8">
+          {/* Background com imagem de capa ou gradiente */}
+          {(albumData as any).cover_image_url ? (
+            <div className="relative h-64 md:h-80">
+              <img
+                src={(albumData as any).cover_image_url}
+                alt={`Capa do álbum ${albumData.name}`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            </div>
+          ) : (
+            <div className="h-64 md:h-80 bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 flex items-center justify-center">
+              <div className="text-center">
+                <Sparkles className="w-16 h-16 text-primary/60 mx-auto mb-4" />
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
                   {albumData.name}
                 </h1>
-                {albumData.is_public && (
-                  <Badge variant="secondary" className="gap-1">
+                <p className="text-muted-foreground text-lg">
+                  {albumData.description}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* Conteúdo sobreposto */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <h1 className="text-2xl md:text-4xl font-bold text-white drop-shadow-lg">
+                    {albumData.name}
+                  </h1>
+                  {albumData.is_public && (
+                    <Badge variant="secondary" className="gap-1 bg-white/20 text-white border-white/30">
                     <Share2 className="w-3 h-3" />
                     Público
                   </Badge>
                 )}
               </div>
               
-              <p className="text-muted-foreground mb-4 leading-relaxed">
+                <p className="text-white/90 mb-4 leading-relaxed drop-shadow-md">
                 {albumData.description}
               </p>
               
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span>Criado em {new Date(albumData.created_at).toLocaleDateString('pt-BR')}</span>
-                <span>•</span>
-                <span>{cards.length} cartas</span>
+                <div className="flex flex-wrap gap-4 text-sm text-white/80">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    Criado em {new Date(albumData.created_at).toLocaleDateString('pt-BR')}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <BarChart3 className="w-4 h-4" />
+                    {cards.length} cartas
+                  </span>
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <Button variant="outline" className="gap-2" onClick={handleShareAlbum}>
-                <Share2 className="w-4 h-4" />
-                Compartilhar
-              </Button>
-              {albumData.isOwn && (
-                <Button variant="hero" className="gap-2" onClick={handleEditAlbum}>
+              <div className="flex gap-3">
+                <Button variant="outline" className="gap-2 bg-white/20 text-white border-white/30 hover:bg-white/30" onClick={handleShareAlbum}>
+                  <Share2 className="w-4 h-4" />
+                  Compartilhar
+                </Button>
+                {albumData.isOwn && (
+                  <Button variant="hero" className="gap-2" onClick={handleEditAlbum}>
                   <Edit3 className="w-4 h-4" />
                   Editar Álbum
                 </Button>
-              )}
+                )}
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Progress Bar */}
-          <Separator className="my-6" />
-          <div className="mb-4">
-            <div className="flex justify-between text-sm text-muted-foreground mb-2">
-              <span>Progresso da Coleção</span>
-              <span>{albumData.cardsCount}/{albumData.totalCards}</span>
+        {/* Estatísticas do Álbum */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Card className="pokemon-card p-4 text-center">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-primary rounded-lg mx-auto mb-3">
+              <BarChart3 className="w-6 h-6 text-white" />
             </div>
-            <div className="w-full bg-muted rounded-full h-3">
-              <div 
-                className="h-3 bg-gradient-primary rounded-full transition-all duration-300 shadow-glow"
-                style={{ width: `${(albumData.cardsCount / albumData.totalCards) * 100}%` }}
-              />
+            <p className="text-2xl font-bold text-foreground">{cards.length}</p>
+            <p className="text-sm text-muted-foreground">Cartas</p>
+          </Card>
+          
+          <Card className="pokemon-card p-4 text-center">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-secondary rounded-lg mx-auto mb-3">
+              <Trophy className="w-6 h-6 text-white" />
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              {Math.round((cards.length / Math.max(albumData.totalCards, 1)) * 100)}%
+            </p>
+            <p className="text-sm text-muted-foreground">Completude</p>
+          </Card>
+          
+          <Card className="pokemon-card p-4 text-center">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-accent rounded-lg mx-auto mb-3">
+              <Eye className="w-6 h-6 text-white" />
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              {albumData.is_public ? 'Público' : 'Privado'}
+            </p>
+            <p className="text-sm text-muted-foreground">Visibilidade</p>
+          </Card>
+          
+          <Card className="pokemon-card p-4 text-center">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg mx-auto mb-3">
+              <Heart className="w-6 h-6 text-white" />
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              {new Date(albumData.created_at).toLocaleDateString('pt-BR', { month: 'short' })}
+            </p>
+            <p className="text-sm text-muted-foreground">Criado</p>
+          </Card>
+        </div>
+
+        {/* Progress Bar Melhorado */}
+        <Card className="pokemon-card p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-primary" />
+              Progresso da Coleção
+            </h3>
+            <span className="text-sm text-muted-foreground">
+              {cards.length} de {albumData.totalCards} cartas
+            </span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
+            <div 
+              className="h-4 bg-gradient-to-r from-primary via-secondary to-accent rounded-full transition-all duration-500 shadow-glow relative"
+              style={{ width: `${Math.min((cards.length / Math.max(albumData.totalCards, 1)) * 100, 100)}%` }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
             </div>
           </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            {cards.length === 0 ? 'Comece adicionando cartas ao seu álbum!' : 
+             cards.length === albumData.totalCards ? 'Parabéns! Coleção completa!' :
+             `Faltam ${albumData.totalCards - cards.length} cartas para completar`}
+          </p>
         </Card>
 
         {/* Controls */}
@@ -250,7 +381,11 @@ const AlbumView = () => {
                 className="pl-10 w-full sm:w-80"
               />
             </div>
-            <Button variant="outline" className="gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => setShowFilters(!showFilters)}
+            >
               <Filter className="w-4 h-4" />
               Filtros
             </Button>
@@ -258,7 +393,7 @@ const AlbumView = () => {
 
           <div className="flex gap-3">
             {albumData.isOwn && (
-              <Button variant="hero" className="gap-2">
+              <Button variant="hero" className="gap-2" onClick={() => setIsAddToAlbumOpen(true)}>
                 <Plus className="w-4 h-4" />
                 Adicionar Carta
               </Button>
@@ -284,9 +419,72 @@ const AlbumView = () => {
           </div>
         </div>
 
+        {/* Filters Panel */}
+        {showFilters && (
+          <Card className="p-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Filtros</h3>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowFilters(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+                      </div>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Tipo:</label>
+                <select 
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="px-3 py-1 border rounded-md text-sm"
+                >
+                  <option value="">Todos</option>
+                  <option value="Fire">Fogo</option>
+                  <option value="Water">Água</option>
+                  <option value="Lightning">Elétrico</option>
+                  <option value="Grass">Planta</option>
+                  <option value="Psychic">Psíquico</option>
+                  <option value="Fighting">Lutador</option>
+                  <option value="Darkness">Sombrio</option>
+                  <option value="Metal">Metal</option>
+                  <option value="Fairy">Fada</option>
+                  <option value="Dragon">Dragão</option>
+                  <option value="Colorless">Incolor</option>
+                </select>
+                        </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Raridade:</label>
+                <select 
+                  value={filterRarity}
+                  onChange={(e) => setFilterRarity(e.target.value)}
+                  className="px-3 py-1 border rounded-md text-sm"
+                >
+                  <option value="">Todas</option>
+                  <option value="Common">Comum</option>
+                  <option value="Uncommon">Incomum</option>
+                  <option value="Rare">Raro</option>
+                  <option value="Rare Holo">Raro Holo</option>
+                </select>
+                    </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setFilterType('');
+                  setFilterRarity('');
+                }}
+              >
+                Limpar Filtros
+              </Button>
+                  </div>
+              </Card>
+        )}
+
         {/* Cards Display */}
         <AlbumCardGrid 
-          cards={cards}
+          cards={filteredCards}
           onRemoveCard={albumData.isOwn ? handleRemoveCard : undefined}
           isOwn={albumData.isOwn}
         />
@@ -305,6 +503,14 @@ const AlbumView = () => {
         onClose={() => setIsEditModalOpen(false)}
         album={albumData}
         onSuccess={handleAlbumUpdated}
+      />
+
+      {/* Add Card to Album Modal */}
+      <AddCardToAlbumModal
+        isOpen={isAddToAlbumOpen}
+        onClose={() => setIsAddToAlbumOpen(false)}
+        albumId={id || ''}
+        onSuccess={handleAddCardSuccess}
       />
     </div>
   );

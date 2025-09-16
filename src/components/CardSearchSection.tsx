@@ -7,6 +7,8 @@ import { Search, Heart, Plus, ExternalLink } from 'lucide-react'
 import { pokemonApiService } from '@/services/pokemonApi'
 import { useAuth } from '@/contexts/AuthContext'
 import CardPreviewModal from '@/components/CardPreviewModal'
+import { translateType, translateRarity, translateCardName } from '@/utils/translations'
+import { EditApiCardModal } from '@/components/EditApiCardModal';
 
 const CardSearchSection = () => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -15,6 +17,8 @@ const CardSearchSection = () => {
   const [favorites, setFavorites] = useState<string[]>([])
   const [selectedCard, setSelectedCard] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showEditApiModal, setShowEditApiModal] = useState(false);
+  const [selectedCardToAdd, setSelectedCardToAdd] = useState<any>(null);
   const { user } = useAuth()
 
   const loadPopularCards = async () => {
@@ -77,15 +81,23 @@ const CardSearchSection = () => {
     )
   }
 
-  const addToCollection = (card: any) => {
+  const handleAddToAlbum = (card: any) => {
     if (!user) {
-      alert('Faça login para adicionar à sua coleção!')
-      return
+      alert('Faça login para adicionar à sua coleção!');
+      return;
     }
-    
-    // Aqui você pode implementar a lógica para adicionar à coleção
-    alert(`Carta ${card.name} adicionada à sua coleção!`)
-  }
+    setSelectedCardToAdd(card);
+    setShowEditApiModal(true);
+  };
+  const handleEditApiSuccess = () => {
+    setShowEditApiModal(false);
+    setSelectedCardToAdd(null);
+    // Opcional: mostrar toast de sucesso
+  };
+  const handleEditApiClose = () => {
+    setShowEditApiModal(false);
+    setSelectedCardToAdd(null);
+  };
 
   const openCardPreview = (card: any) => {
     setSelectedCard(card)
@@ -179,21 +191,21 @@ const CardSearchSection = () => {
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div>
-                      <h3 className="font-bold text-lg line-clamp-1">{card.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {card.set?.name} • #{card.number}
-                      </p>
+                      <h3 className="font-bold text-lg line-clamp-1">{translateCardName(card.name)}</h3>
+                      {card.set?.name && (
+                        <p className="text-sm text-muted-foreground">{card.set.name} • #{card.number}</p>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap gap-1">
                       {card.types && card.types.map((type: string) => (
                         <Badge key={type} variant="secondary" className="text-xs">
-                          {type}
+                          {translateType(type)}
                         </Badge>
                       ))}
                       {card.rarity && (
                         <Badge variant="outline" className="text-xs">
-                          {card.rarity}
+                          {translateRarity(card.rarity)}
                         </Badge>
                       )}
                     </div>
@@ -209,7 +221,7 @@ const CardSearchSection = () => {
                       <Button
                         size="sm"
                         className="flex-1"
-                        onClick={() => addToCollection(card)}
+                        onClick={() => handleAddToAlbum(card)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Adicionar
@@ -255,9 +267,17 @@ const CardSearchSection = () => {
         onClose={closeCardPreview}
         card={selectedCard}
         onToggleFavorite={toggleFavorite}
-        onAddToCollection={addToCollection}
         isFavorite={selectedCard ? favorites.includes(selectedCard.id) : false}
       />
+      {showEditApiModal && selectedCardToAdd && (
+        <EditApiCardModal
+          isOpen={showEditApiModal}
+          onClose={handleEditApiClose}
+          albumId={user?.id || ''} // ou passe o albumId correto se necessário
+          card={selectedCardToAdd}
+          onSuccess={handleEditApiSuccess}
+        />
+      )}
     </section>
   )
 }

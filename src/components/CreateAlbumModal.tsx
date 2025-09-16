@@ -12,6 +12,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, BookOpen } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { albumService } from '@/services/albumService'
+import { imageUploadService } from '@/services/imageUploadService'
+import { ImageUpload } from '@/components/ImageUpload'
 import logo from '@/assets/logo.png'
 
 const createAlbumSchema = z.object({
@@ -31,6 +33,7 @@ interface CreateAlbumModalProps {
 export const CreateAlbumModal = ({ isOpen, onClose, onSuccess }: CreateAlbumModalProps) => {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const { user } = useAuth()
 
   const {
@@ -38,7 +41,8 @@ export const CreateAlbumModal = ({ isOpen, onClose, onSuccess }: CreateAlbumModa
     handleSubmit,
     formState: { errors },
     reset,
-    watch
+    watch,
+    setValue
   } = useForm<CreateAlbumFormData>({
     resolver: zodResolver(createAlbumSchema),
     defaultValues: {
@@ -58,14 +62,41 @@ export const CreateAlbumModal = ({ isOpen, onClose, onSuccess }: CreateAlbumModa
     setError(null)
 
     try {
-      await albumService.createAlbum({
+      let coverImageUrl: string | null = null
+
+      // Se há uma imagem selecionada, fazer upload primeiro
+      if (selectedImage) {
+        try {
+          console.log('Fazendo upload da imagem...')
+          coverImageUrl = await imageUploadService.uploadImage(selectedImage)
+          console.log('Upload da imagem bem-sucedido:', coverImageUrl)
+        } catch (uploadError) {
+          console.warn('Erro no upload da imagem (não crítico):', uploadError)
+          // Continuar sem imagem
+        }
+      }
+
+      // Criar o álbum com ou sem imagem
+      const albumData: any = {
         user_id: user.id,
         name: data.name,
         description: data.description || null,
         is_public: data.isPublic
-      })
+      }
+
+      // Adicionar cover_image_url se disponível
+      if (coverImageUrl) {
+        albumData.cover_image_url = coverImageUrl
+        console.log('Criando álbum com imagem de capa:', albumData)
+      } else {
+        console.log('Criando álbum sem imagem de capa:', albumData)
+      }
+
+      const createdAlbum = await albumService.createAlbum(albumData)
+      console.log('Álbum criado com sucesso:', createdAlbum)
 
       reset()
+      setSelectedImage(null)
       onSuccess?.()
       onClose()
     } catch (err: any) {
@@ -80,6 +111,7 @@ export const CreateAlbumModal = ({ isOpen, onClose, onSuccess }: CreateAlbumModa
     if (!isLoading) {
       reset()
       setError(null)
+      setSelectedImage(null)
       onClose()
     }
   }
@@ -134,6 +166,13 @@ export const CreateAlbumModal = ({ isOpen, onClose, onSuccess }: CreateAlbumModa
             )}
           </div>
 
+          <ImageUpload
+            onImageSelect={setSelectedImage}
+            disabled={isLoading}
+            maxSizeMB={5}
+            acceptedFormats={['image/jpeg', 'image/png', 'image/webp']}
+          />
+
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div className="space-y-1">
               <Label htmlFor="isPublic" className="text-base font-medium">
@@ -147,10 +186,9 @@ export const CreateAlbumModal = ({ isOpen, onClose, onSuccess }: CreateAlbumModa
               id="isPublic"
               checked={isPublic}
               onCheckedChange={(checked) => {
-                // O register já cuida disso, mas podemos forçar se necessário
+                setValue('isPublic', checked)
               }}
               disabled={isLoading}
-              {...register('isPublic')}
             />
           </div>
 

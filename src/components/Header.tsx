@@ -1,20 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { BookOpen, User, Search, Menu, LogIn, UserPlus, LogOut, Shield, CreditCard } from "lucide-react";
+import { BookOpen, User, Search, Menu, LogIn, UserPlus, LogOut, Shield, CreditCard, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthModal } from "@/components/auth/AuthModal";
 import logo from "@/assets/logo.png";
+import { supabase } from '@/lib/supabase';
 
 interface HeaderProps {
   currentPage?: 'home' | 'dashboard' | 'album' | 'search' | 'cards' | 'admin';
 }
 
 const Header = ({ currentPage = 'home' }: HeaderProps) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isSuperAdmin } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+  const [buyLink, setBuyLink] = useState<string>("");
+
+  useEffect(() => {
+    async function fetchBuyLink() {
+      const { data } = await supabase.from('settings').select('value').eq('key', 'buy_link').single();
+      setBuyLink(data?.value || "");
+    }
+    fetchBuyLink();
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -60,16 +70,18 @@ const Header = ({ currentPage = 'home' }: HeaderProps) => {
               </Button>
             </Link>
             
-            <Link to="/dashboard">
-              <Button 
-                variant={currentPage === 'dashboard' ? 'default' : 'ghost'} 
-                size="sm"
-                className="gap-2"
-              >
-                <User className="w-4 h-4" />
-                Meus Álbuns
-              </Button>
-            </Link>
+            {user && (
+              <Link to="/dashboard">
+                <Button 
+                  variant={currentPage === 'dashboard' ? 'default' : 'ghost'} 
+                  size="sm"
+                  className="gap-2"
+                >
+                  <User className="w-4 h-4" />
+                  Meus Álbuns
+                </Button>
+              </Link>
+            )}
             
             <Link to="/cards">
               <Button 
@@ -93,16 +105,25 @@ const Header = ({ currentPage = 'home' }: HeaderProps) => {
               </Button>
             </Link>
             
-            <Link to="/admin">
-              <Button 
-                variant={currentPage === 'admin' ? 'default' : 'ghost'} 
-                size="sm"
-                className="gap-2"
-              >
-                <Shield className="w-4 h-4" />
-                Admin
-              </Button>
-            </Link>
+            {isSuperAdmin && (
+              <Link to="/admin">
+                <Button 
+                  variant={currentPage === 'admin' ? 'default' : 'ghost'} 
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Shield className="w-4 h-4" />
+                  Admin
+                </Button>
+              </Link>
+            )}
+            {buyLink && (
+              <a href={buyLink} target="_blank" rel="noopener noreferrer">
+                <Button variant="hero" size="sm" className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+                  🛒 Compre Aqui
+                </Button>
+              </a>
+            )}
           </nav>
 
           {/* Auth Buttons */}
@@ -116,6 +137,11 @@ const Header = ({ currentPage = 'home' }: HeaderProps) => {
                   <LogOut className="w-4 h-4" />
                   Sair
                 </Button>
+                <Link to="/profile">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </Link>
               </>
             ) : (
               <>

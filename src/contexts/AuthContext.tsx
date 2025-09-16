@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  isSuperAdmin: boolean
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<{ error: AuthError | null }>
@@ -30,6 +31,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  // Lista de emails de superadmin (você pode mover isso para variáveis de ambiente)
+  const SUPER_ADMIN_EMAILS = [
+    'admin@pokedex.com',
+    'superadmin@pokedex.com',
+    'wikiwoo@example.com',
+    'igormartins1993@gmail.com' // Superadmin principal
+  ]
+
+  const checkSuperAdminStatus = (userEmail: string | undefined) => {
+    if (!userEmail) {
+      setIsSuperAdmin(false)
+      return
+    }
+    setIsSuperAdmin(SUPER_ADMIN_EMAILS.includes(userEmail))
+  }
 
   useEffect(() => {
     // Obter sessão inicial
@@ -39,6 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('AuthContext: Sessão inicial:', session?.user?.id);
       setSession(session)
       setUser(session?.user ?? null)
+      checkSuperAdminStatus(session?.user?.email)
       setLoading(false)
     }
 
@@ -50,6 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('AuthContext: Mudança de auth:', event, session?.user?.id);
         setSession(session)
         setUser(session?.user ?? null)
+        checkSuperAdminStatus(session?.user?.email)
         setLoading(false)
 
         // Criar perfil do usuário se for um novo registro
@@ -118,6 +138,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     session,
     loading,
+    isSuperAdmin,
     signUp,
     signIn,
     signOut,

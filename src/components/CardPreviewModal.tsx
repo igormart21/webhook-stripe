@@ -5,6 +5,7 @@ import { Heart, Plus, ExternalLink, X, BookOpen } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { AddToAlbumModal } from './AddToAlbumModal'
 import { useState } from 'react'
+import { translateType, translateRarity, translateUI, translateEnergyCost, translateAttackText, translateCardName } from '@/utils/translations'
 
 interface CardPreviewModalProps {
   isOpen: boolean
@@ -26,7 +27,7 @@ const CardPreviewModal = ({
   const { user } = useAuth()
   const [isAddToAlbumOpen, setIsAddToAlbumOpen] = useState(false)
 
-  if (!card) return null
+  if (!card || !isOpen) return null
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -102,14 +103,14 @@ const CardPreviewModal = ({
                 onClick={() => setIsAddToAlbumOpen(true)}
               >
                 <BookOpen className="h-4 w-4 mr-2" />
-                Adicionar ao Álbum
+                {translateUI('Add to Album')}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => onAddToCollection(card)}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Favoritar
+                {translateUI('Favorite')}
               </Button>
               <Button
                 variant="outline"
@@ -131,9 +132,35 @@ const CardPreviewModal = ({
                 </Badge>
               </div>
               
+              {/* Bloco de informações personalizadas */}
+              <div className="space-y-1 mt-2">
+                {(card.priceMin || card.priceMax) && (
+                  <div className="text-green-700 font-semibold text-sm">
+                    Preço: {card.priceMin ? `R$${card.priceMin}` : ''}
+                    {card.priceMin && card.priceMax ? ' - ' : ''}
+                    {card.priceMax ? `R$${card.priceMax}` : ''}
+                  </div>
+                )}
+                {card.condition && (
+                  <div className="text-xs text-muted-foreground">Condição: {card.condition}</div>
+                )}
+                {card.lang && (
+                  <div className="text-xs text-muted-foreground">Idioma: {card.lang}</div>
+                )}
+                {card.set && (
+                  <div className="text-xs text-muted-foreground">Coleção: {card.set}</div>
+                )}
+                {card.quantity > 1 && (
+                  <div className="text-xs text-muted-foreground">Quantidade: {card.quantity}</div>
+                )}
+                {card.notes && (
+                  <div className="text-xs text-muted-foreground">{card.notes}</div>
+                )}
+              </div>
+
               <div className="text-sm text-muted-foreground">
                 <p><strong>Set:</strong> {card.set?.name}</p>
-                <p><strong>Número:</strong> #{card.number}</p>
+                <p><strong>Number:</strong> #{card.number}</p>
                 {card.hp && <p><strong>HP:</strong> {card.hp}</p>}
               </div>
             </div>
@@ -141,7 +168,7 @@ const CardPreviewModal = ({
             {/* Types */}
             {card.types && card.types.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold">Tipos:</h4>
+                <h4 className="font-semibold">Types:</h4>
                 <div className="flex flex-wrap gap-2">
                   {card.types.map((type: string) => (
                     <Badge key={type} variant="secondary" className="text-sm">
@@ -155,7 +182,7 @@ const CardPreviewModal = ({
             {/* Attacks */}
             {card.attacks && card.attacks.length > 0 && (
               <div className="space-y-3">
-                <h4 className="font-semibold">Ataques:</h4>
+                <h4 className="font-semibold">Attacks:</h4>
                 <div className="space-y-2">
                   {card.attacks.map((attack: any, index: number) => (
                     <div key={index} className="border rounded-lg p-3">
@@ -171,7 +198,7 @@ const CardPreviewModal = ({
                       </div>
                       {attack.damage && (
                         <p className="text-sm text-red-600 font-medium">
-                          Dano: {attack.damage}
+                          Damage: {attack.damage}
                         </p>
                       )}
                       {attack.text && (
@@ -188,7 +215,7 @@ const CardPreviewModal = ({
             {/* Abilities */}
             {card.abilities && card.abilities.length > 0 && (
               <div className="space-y-3">
-                <h4 className="font-semibold">Habilidades:</h4>
+                <h4 className="font-semibold">Abilities:</h4>
                 <div className="space-y-2">
                   {card.abilities.map((ability: any, index: number) => (
                     <div key={index} className="border rounded-lg p-3">
@@ -206,7 +233,7 @@ const CardPreviewModal = ({
             <div className="grid grid-cols-2 gap-4">
               {card.weaknesses && card.weaknesses.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-red-600">Fraquezas:</h4>
+                  <h4 className="font-semibold text-red-600">Weaknesses:</h4>
                   <div className="space-y-1">
                     {card.weaknesses.map((weakness: any, index: number) => (
                       <p key={index} className="text-sm">
@@ -219,7 +246,7 @@ const CardPreviewModal = ({
               
               {card.resistances && card.resistances.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-blue-600">Resistências:</h4>
+                  <h4 className="font-semibold text-blue-600">Resistances:</h4>
                   <div className="space-y-1">
                     {card.resistances.map((resistance: any, index: number) => (
                       <p key={index} className="text-sm">
@@ -234,7 +261,7 @@ const CardPreviewModal = ({
             {/* Retreat Cost */}
             {card.retreatCost && card.retreatCost.length > 0 && (
               <div>
-                <h4 className="font-semibold">Custo de Recuo:</h4>
+                <h4 className="font-semibold">Retreat Cost:</h4>
                 <div className="flex items-center gap-1">
                   {card.retreatCost.map((cost: string, index: number) => (
                     <span key={index} className="text-xs bg-gray-200 px-1 rounded">
@@ -248,7 +275,7 @@ const CardPreviewModal = ({
             {/* Flavor Text */}
             {card.flavorText && (
               <div>
-                <h4 className="font-semibold">Descrição:</h4>
+                <h4 className="font-semibold">Flavor Text:</h4>
                 <p className="text-sm text-muted-foreground italic">
                   {card.flavorText}
                 </p>
@@ -258,7 +285,7 @@ const CardPreviewModal = ({
             {/* Artist */}
             {card.artist && (
               <div>
-                <h4 className="font-semibold">Artista:</h4>
+                <h4 className="font-semibold">Artist:</h4>
                 <p className="text-sm text-muted-foreground">
                   {card.artist}
                 </p>

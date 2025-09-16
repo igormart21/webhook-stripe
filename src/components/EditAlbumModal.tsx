@@ -6,8 +6,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { albumService } from '@/services/albumService'
+import { imageUploadService } from '@/services/imageUploadService'
+import { ImageUpload } from '@/components/ImageUpload'
 import logo from '@/assets/logo.png'
 
 interface EditAlbumModalProps {
@@ -23,6 +25,8 @@ export const EditAlbumModal = ({ isOpen, onClose, album, onSuccess }: EditAlbumM
   const [isPublic, setIsPublic] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null)
 
   // Carregar dados do álbum quando o modal abrir
   useEffect(() => {
@@ -30,6 +34,8 @@ export const EditAlbumModal = ({ isOpen, onClose, album, onSuccess }: EditAlbumM
       setName(album.name || '')
       setDescription(album.description || '')
       setIsPublic(album.is_public || false)
+      setCurrentImageUrl(album.cover_image_url || null)
+      setSelectedImage(null)
       setError(null)
     }
   }, [isOpen, album])
@@ -46,11 +52,34 @@ export const EditAlbumModal = ({ isOpen, onClose, album, onSuccess }: EditAlbumM
     setError(null)
 
     try {
-      await albumService.updateAlbum(album.id, {
+      let coverImageUrl = currentImageUrl
+
+      // Se há uma nova imagem selecionada, fazer upload
+      if (selectedImage) {
+        try {
+          console.log('Fazendo upload da nova imagem...')
+          coverImageUrl = await imageUploadService.uploadImage(selectedImage)
+          console.log('Upload da nova imagem bem-sucedido:', coverImageUrl)
+        } catch (uploadError) {
+          console.warn('Erro no upload da nova imagem (não crítico):', uploadError)
+          // Continuar com a imagem atual se upload falhar
+        }
+      }
+
+      // Atualizar o álbum com ou sem imagem
+      const updateData: any = {
         name: name.trim(),
         description: description.trim() || null,
         is_public: isPublic
-      })
+      }
+
+      // Adicionar cover_image_url se disponível
+      if (coverImageUrl) {
+        updateData.cover_image_url = coverImageUrl
+      }
+
+      console.log('Atualizando álbum com dados:', updateData)
+      await albumService.updateAlbum(album.id, updateData)
       
       onSuccess?.()
       onClose()
@@ -67,6 +96,8 @@ export const EditAlbumModal = ({ isOpen, onClose, album, onSuccess }: EditAlbumM
       setName('')
       setDescription('')
       setIsPublic(false)
+      setSelectedImage(null)
+      setCurrentImageUrl(null)
       setError(null)
       onClose()
     }
@@ -119,6 +150,46 @@ export const EditAlbumModal = ({ isOpen, onClose, album, onSuccess }: EditAlbumM
                 placeholder="Descreva seu álbum..."
                 rows={3}
                 className="mt-1"
+              />
+            </div>
+
+            {/* Upload de nova imagem de capa */}
+            <div>
+              <Label>Imagem de Capa</Label>
+              {currentImageUrl && !selectedImage && (
+                <div className="mt-2 mb-4">
+                  <p className="text-sm text-muted-foreground mb-2">Imagem atual:</p>
+                  <div className="relative inline-block">
+                    <img
+                      src={currentImageUrl}
+                      alt="Imagem atual do álbum"
+                      className="w-32 h-32 object-cover rounded-lg border"
+                      onError={(e) => {
+                        console.log('Erro ao carregar imagem atual:', currentImageUrl)
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                      onClick={() => {
+                        setCurrentImageUrl(null)
+                        setSelectedImage(null)
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <ImageUpload
+                onImageSelect={setSelectedImage}
+                currentImageUrl={currentImageUrl}
+                disabled={loading}
+                maxSizeMB={5}
+                acceptedFormats={['image/jpeg', 'image/png', 'image/webp']}
               />
             </div>
 

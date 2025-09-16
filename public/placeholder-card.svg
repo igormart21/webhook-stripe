@@ -1,0 +1,8 @@
+<svg width="200" height="280" viewBox="0 0 200 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="280" rx="12" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2"/>
+  <rect x="16" y="16" width="168" height="248" rx="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <circle cx="100" cy="120" r="24" fill="#d1d5db"/>
+  <path d="M88 120 L96 128 L112 112" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="100" y="180" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="14" font-weight="500">Carta Pokémon</text>
+  <text x="100" y="200" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="12">Carregando...</text>
+</svg>

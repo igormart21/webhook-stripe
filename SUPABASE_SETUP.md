@@ -53,6 +53,7 @@ CREATE TABLE albums (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
+  cover_image_url TEXT,
   is_public BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -193,6 +194,7 @@ albums (álbuns de cartas)
 ├── user_id (UUID, referência para auth.users)
 ├── name (TEXT)
 ├── description (TEXT, opcional)
+├── cover_image_url (TEXT, opcional)
 ├── is_public (BOOLEAN)
 ├── created_at (TIMESTAMP)
 └── updated_at (TIMESTAMP)

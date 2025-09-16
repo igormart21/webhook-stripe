@@ -40,6 +40,8 @@ export const albumService = {
 
   // Criar novo álbum
   async createAlbum(album: AlbumInsert): Promise<Album> {
+    console.log('Criando álbum com dados:', album)
+    
     const { data, error } = await supabase
       .from('albums')
       .insert(album)
@@ -51,11 +53,14 @@ export const albumService = {
       throw error
     }
 
+    console.log('Álbum criado com sucesso:', data)
     return data
   },
 
   // Atualizar álbum
   async updateAlbum(id: string, updates: AlbumUpdate): Promise<Album> {
+    console.log('Atualizando álbum:', { id, updates })
+    
     const { data, error } = await supabase
       .from('albums')
       .update(updates)
@@ -68,6 +73,7 @@ export const albumService = {
       throw error
     }
 
+    console.log('Álbum atualizado com sucesso:', data)
     return data
   },
 
@@ -102,19 +108,33 @@ export const albumService = {
 
   // Adicionar carta ao álbum
   async addCardToAlbum(albumId: string, cardId: string, quantity: number = 1, notes?: string): Promise<void> {
-    const { error } = await supabase
+    console.log('🟢 albumService.addCardToAlbum chamado com:', {
+      albumId,
+      cardId,
+      quantity,
+      notes
+    })
+
+    const insertData = {
+      album_id: albumId,
+      card_id: cardId,
+      quantity,
+      notes
+    }
+
+    console.log('🟢 Dados para inserção:', insertData)
+
+    const { data, error } = await supabase
       .from('album_cards')
-      .insert({
-        album_id: albumId,
-        card_id: cardId,
-        quantity,
-        notes
-      })
+      .insert(insertData)
+      .select()
 
     if (error) {
-      console.error('Erro ao adicionar carta ao álbum:', error)
+      console.error('❌ Erro ao adicionar carta ao álbum:', error)
       throw error
     }
+
+    console.log('✅ Carta adicionada com sucesso ao álbum:', data)
   },
 
   // Remover carta do álbum
@@ -145,5 +165,28 @@ export const albumService = {
     }
 
     return data || []
+  },
+
+  async addCustomCardToAlbum(albumId: string, card: any): Promise<void> {
+    const insertData = {
+      album_id: albumId,
+      card_id: `custom-${Date.now()}`,
+      name: card.name,
+      set: card.set,
+      rarity: card.rarity,
+      lang: card.lang,
+      condition: card.condition,
+      quantity: card.quantity,
+      price_min: card.priceMin,
+      price_max: card.priceMax,
+      image_url: card.imageUrl,
+      notes: card.notes,
+      created_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('album_cards').insert(insertData);
+    if (error) {
+      console.error('Erro ao adicionar carta customizada ao álbum:', error);
+      throw error;
+    }
   }
 }

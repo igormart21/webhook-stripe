@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, Grid3X3, List, Eye } from 'lucide-react'
+import { Search, Grid3X3, List, Eye, Trash2 } from 'lucide-react'
 import CardPreviewModal from './CardPreviewModal'
 import { pokemonApiService } from '@/services/pokemonApi'
 
@@ -23,32 +23,71 @@ export const AlbumCardGrid = ({ cards, onRemoveCard, isOwn = false }: AlbumCardG
   // Carregar detalhes das cartas automaticamente
   useEffect(() => {
     const loadCardDetails = async () => {
+      console.log('🟢 Carregando detalhes das cartas do álbum:', cards.length, 'cartas')
+      console.log('🟢 IDs das cartas no álbum:', cards.map(c => c.card_id))
       const newCardDetails: { [key: string]: any } = {}
       
       for (const card of cards) {
         if (card.card_id && !cardDetails[card.card_id]) {
+          console.log('🟢 Carregando detalhes da carta:', card.card_id)
           try {
             const cardData = await pokemonApiService.getCardById(card.card_id)
+            console.log('✅ Carta carregada com sucesso:', cardData.name, 'para ID:', card.card_id)
             newCardDetails[card.card_id] = cardData
           } catch (error) {
-            console.error(`Erro ao carregar carta ${card.card_id}:`, error)
+            console.error(`❌ Erro ao carregar carta ${card.card_id}:`, error)
             // Usar dados básicos se não conseguir carregar da API
             newCardDetails[card.card_id] = {
               id: card.card_id,
-              name: card.card_id,
-              images: { small: '/placeholder-card.png' }
+              name: `Carta ${card.card_id}`,
+              images: { small: '/placeholder-card.svg' },
+              rarity: 'Desconhecida',
+              types: ['Incolor'],
+              supertype: 'Pokémon',
+              subtypes: ['Basic'],
+              hp: '50',
+              set: {
+                id: 'unknown-set',
+                name: 'Coleção Desconhecida',
+                series: 'Unknown',
+                printedTotal: 1,
+                total: 1,
+                legalities: { unlimited: 'Legal' },
+                releaseDate: '2024-01-01',
+                updatedAt: '2024-01-01T00:00:00.000Z',
+                images: { symbol: '', logo: '' }
+              },
+              number: '1',
+              legalities: { unlimited: 'Legal' },
+              attacks: [{
+                name: 'Ataque Básico',
+                cost: ['Colorless'],
+                convertedEnergyCost: 1,
+                damage: '10',
+                text: 'Um ataque básico.'
+              }]
             }
+            console.log('⚠️ Usando dados básicos para carta:', card.card_id)
           }
+        } else if (card.card_id) {
+          console.log('ℹ️ Carta já carregada:', card.card_id)
+        } else {
+          console.log('⚠️ Carta sem card_id:', card)
         }
       }
       
       if (Object.keys(newCardDetails).length > 0) {
+        console.log('✅ Detalhes das cartas carregados:', Object.keys(newCardDetails))
         setCardDetails(prev => ({ ...prev, ...newCardDetails }))
+      } else {
+        console.log('ℹ️ Nenhuma nova carta para carregar')
       }
     }
 
     if (cards.length > 0) {
       loadCardDetails()
+    } else {
+      console.log('ℹ️ Nenhuma carta no álbum para carregar')
     }
   }, [cards])
 
@@ -94,6 +133,11 @@ export const AlbumCardGrid = ({ cards, onRemoveCard, isOwn = false }: AlbumCardG
     // Implementar adicionar à coleção se necessário
     console.log('Add to collection:', card)
   }
+
+  const formatPrice = (value: any) =>
+    value !== undefined && value !== null && value !== ''
+      ? Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      : '';
 
   if (cards.length === 0) {
     return (
@@ -157,91 +201,162 @@ export const AlbumCardGrid = ({ cards, onRemoveCard, isOwn = false }: AlbumCardG
             ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'
             : 'space-y-4'
         }>
-          {filteredCards.map((card) => (
-            <Card
-              key={card.id}
-              className="pokemon-card group cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => openCardPreview(card)}
-            >
-              <CardContent className="p-4">
-                {viewMode === 'grid' ? (
-                  <div className="space-y-3">
-                    <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                      <img
-                        src={cardDetails[card.card_id]?.images?.small || `/placeholder-card.png`}
-                        alt={cardDetails[card.card_id]?.name || card.card_id}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.currentTarget.src = '/placeholder-card.png'
-                        }}
-                      />
+          {filteredCards.map((card, index) => {
+            const apiCard = cardDetails[card.card_id] || {};
+            const mergedCard = {
+              ...apiCard,
+              ...card,
+              priceMin: card.price_min ?? card.priceMin,
+              priceMax: card.price_max ?? card.priceMax,
+              imageUrl: card.image_url ?? card.imageUrl,
+              condition: card.condition,
+              lang: card.lang,
+              set: card.set,
+              notes: card.notes,
+              quantity: card.quantity,
+              rarity: card.rarity ?? apiCard.rarity,
+              name: card.name ?? apiCard.name,
+              images: {
+                small: (card.image_url ?? apiCard.images?.small ?? apiCard.images?.large ?? '/placeholder-card.svg'),
+                large: (card.image_url ?? apiCard.images?.large ?? apiCard.images?.small ?? '/placeholder-card.svg'),
+              },
+            };
+            return (
+              <Card
+                key={card.id || card.card_id}
+                className="pokemon-card group cursor-pointer hover:scale-105 hover:shadow-xl transition-all duration-300 ease-out hover:-translate-y-1 animate-in fade-in-0 slide-in-from-bottom-4"
+                style={{ animationDelay: `${index * 50}ms` }}
+                onClick={() => {
+                  setSelectedCard(mergedCard);
+                  setIsModalOpen(true);
+                }}
+              >
+                <CardContent className="p-4">
+                  {viewMode === 'grid' ? (
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                          {mergedCard.images?.small ? (
+                            <img
+                              src={mergedCard.images.small}
+                              alt={mergedCard.name || mergedCard.card_id}
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                e.currentTarget.src = '/placeholder-card.svg';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                              <div className="text-center">
+                                <div className="text-2xl mb-2">🃏</div>
+                                <div className="text-xs">Carregando...</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {/* Botões de ação na visualização grid */}
+                        {isOwn && onRemoveCard && (
+                          <div className="absolute top-2 right-2 flex gap-1">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveCard(card.card_id);
+                              }}
+                              title="Remover carta"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm truncate">
+                          {mergedCard.name || `Carta ${card.card_id}`}
+                        </p>
+                        {mergedCard.rarity && (
+                          <Badge variant="secondary" className="text-xs">
+                            {mergedCard.rarity}
+                          </Badge>
+                        )}
+                        {(mergedCard.priceMin || mergedCard.priceMax) && (
+                          <span className="block text-xs text-green-700 font-semibold">
+                            Preço: {mergedCard.priceMin ? formatPrice(mergedCard.priceMin) : ''}
+                            {mergedCard.priceMin && mergedCard.priceMax ? ' - ' : ''}
+                            {mergedCard.priceMax ? formatPrice(mergedCard.priceMax) : ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <p className="font-medium text-sm truncate">
-                        {cardDetails[card.card_id]?.name || card.card_id}
-                      </p>
-                      {card.quantity > 1 && (
-                        <Badge variant="secondary" className="text-xs">
-                          x{card.quantity}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-20 bg-muted rounded flex items-center justify-center overflow-hidden">
-                      <img
-                        src={cardDetails[card.card_id]?.images?.small || `/placeholder-card.png`}
-                        alt={cardDetails[card.card_id]?.name || card.card_id}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.currentTarget.src = '/placeholder-card.png'
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium">{cardDetails[card.card_id]?.name || card.card_id}</h4>
-                      {card.notes && (
-                        <p className="text-sm text-muted-foreground">{card.notes}</p>
-                      )}
-                      {card.quantity > 1 && (
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          Quantidade: {card.quantity}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openCardPreview(card)
-                        }}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      {isOwn && onRemoveCard && (
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-20 bg-muted rounded flex items-center justify-center overflow-hidden">
+                        {mergedCard.images?.small ? (
+                          <img
+                            src={mergedCard.images.small}
+                            alt={mergedCard.name || mergedCard.card_id}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              e.currentTarget.src = '/placeholder-card.svg';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                            <div className="text-center">
+                              <div className="text-lg">🃏</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium">{mergedCard.name || `Carta ${card.card_id}`}</h4>
+                        {mergedCard.rarity && (
+                          <span className="block text-xs text-muted-foreground">{mergedCard.rarity}</span>
+                        )}
+                        {(mergedCard.priceMin || mergedCard.priceMax) && (
+                          <span className="block text-xs text-green-700 font-semibold">
+                            Preço: {mergedCard.priceMin ? formatPrice(mergedCard.priceMin) : ''}
+                            {mergedCard.priceMin && mergedCard.priceMax ? ' - ' : ''}
+                            {mergedCard.priceMax ? formatPrice(mergedCard.priceMax) : ''}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={(e) => {
-                            e.stopPropagation()
-                            onRemoveCard(card.card_id)
+                            e.stopPropagation();
+                            setSelectedCard(mergedCard);
+                            setIsModalOpen(true);
                           }}
                         >
-                          Remover
+                          <Eye className="w-4 h-4" />
                         </Button>
-                      )}
+                        {isOwn && onRemoveCard && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveCard(card.card_id);
+                            }}
+                            title="Remover carta"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
-
       {/* Card Preview Modal */}
       <CardPreviewModal
         isOpen={isModalOpen}
@@ -252,5 +367,5 @@ export const AlbumCardGrid = ({ cards, onRemoveCard, isOwn = false }: AlbumCardG
         isFavorite={false}
       />
     </div>
-  )
-}
+  );
+};

@@ -18,10 +18,16 @@ import {
   Edit,
   Trash2,
   Eye,
-  Download
+  Download,
+  ArrowLeft,
+  LogOut,
+  Home
 } from 'lucide-react'
 import { pokemonApiService, PokemonCard } from '@/services/pokemonApi'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import { useToast } from '@/components/ui/use-toast';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview')
@@ -29,6 +35,120 @@ const AdminDashboard = () => {
   const [cards, setCards] = useState<PokemonCard[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
+  const [apiTestResults, setApiTestResults] = useState<Array<{success: boolean, message: string}>>([])
+  const [albums, setAlbums] = useState<any[]>([]);
+  const [buyLink, setBuyLink] = useState('');
+  const [buyLinkLoading, setBuyLinkLoading] = useState(false);
+  const { user, signOut, isSuperAdmin } = useAuth()
+  const navigate = useNavigate()
+  const { toast } = useToast();
+
+  // Verificar se o usuário é superadmin
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      navigate('/')
+    }
+  }, [isSuperAdmin, navigate])
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/')
+  }
+
+  const handleBackToSite = () => {
+    navigate('/')
+  }
+
+  // Buscar link do Supabase ao abrir configurações
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      setBuyLinkLoading(true);
+      supabase.from('settings').select('value').eq('key', 'buy_link').single()
+        .then(({ data }) => setBuyLink(data?.value || ''))
+        .finally(() => setBuyLinkLoading(false));
+    }
+  }, [activeTab]);
+
+  const handleBuyLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBuyLink(e.target.value);
+  };
+
+  const handleSaveSettings = async () => {
+    setBuyLinkLoading(true);
+    const { error } = await supabase.from('settings').upsert({ key: 'buy_link', value: buyLink });
+    setBuyLinkLoading(false);
+    if (!error) {
+      toast({ title: 'Configurações salvas!', description: 'Suas alterações foram salvas com sucesso.', variant: 'success' });
+    } else {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  // Função para testar a API Pokémon TCG
+  const testPokemonTcgApi = async () => {
+    setLoading(true)
+    setApiTestResults([])
+    
+    try {
+      const response = await fetch('https://api.pokemontcg.io/v2/cards?pageSize=1', {
+        headers: {
+          'X-Api-Key': 'feb26d91-2c88-4ad0-bc4f-341300b092e3'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setApiTestResults([
+          { success: true, message: `Pokémon TCG API: ✅ Funcionando (${data.totalCount} cartas disponíveis)` }
+        ])
+      } else {
+        setApiTestResults([
+          { success: false, message: `Pokémon TCG API: ❌ Erro ${response.status}` }
+        ])
+      }
+    } catch (error) {
+      setApiTestResults([
+        { success: false, message: `Pokémon TCG API: ❌ Erro de conexão` }
+      ])
+    }
+    
+    setLoading(false)
+  }
+
+  // Função para testar a API TCGdx
+  const testTcgdxApi = async () => {
+    setLoading(true)
+    setApiTestResults([])
+    
+    try {
+      const response = await fetch('https://api.tcgdx.net/v2/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query: 'query { cards(limit: 1) { id name { pt en } } }'
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setApiTestResults([
+          { success: true, message: `TCGdx API: ✅ Funcionando (GraphQL ativo)` }
+        ])
+      } else {
+        setApiTestResults([
+          { success: false, message: `TCGdx API: ❌ Erro ${response.status}` }
+        ])
+      }
+    } catch (error) {
+      setApiTestResults([
+        { success: false, message: `TCGdx API: ❌ Servidor fora do ar` }
+      ])
+    }
+    
+    setLoading(false)
+  }
 
   // Buscar usuários
   const fetchUsers = async () => {
@@ -70,8 +190,22 @@ const AdminDashboard = () => {
     }
   }
 
+  const fetchAlbums = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('albums')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setAlbums(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar álbuns:', error);
+    }
+  };
+
   useEffect(() => {
     fetchUsers()
+    fetchAlbums()
     // Testar a API com uma busca inicial
     testApiConnection()
   }, [])
@@ -94,7 +228,7 @@ const AdminDashboard = () => {
     totalUsers: users.length,
     totalCards: cards.length,
     activeUsers: users.filter(u => u.last_sign_in_at).length,
-    totalAlbums: 0 // Implementar depois
+    totalAlbums: albums.length,
   }
 
   return (
@@ -102,8 +236,30 @@ const AdminDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold gradient-text mb-2">Dashboard Superadmin</h1>
-          <p className="text-muted-foreground">Gerencie a plataforma Pokédex TCG</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold gradient-text mb-2">Dashboard Superadmin</h1>
+              <p className="text-muted-foreground">Gerencie a plataforma Pokédex TCG</p>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={handleBackToSite}
+                className="gap-2"
+              >
+                <Home className="w-4 h-4" />
+                Voltar ao Site
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleSignOut}
+                className="gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Deslogar
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -163,9 +319,10 @@ const AdminDashboard = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="albums">Álbuns</TabsTrigger>
             <TabsTrigger value="cards">Cartas</TabsTrigger>
             <TabsTrigger value="upload">Upload</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
@@ -242,6 +399,36 @@ const AdminDashboard = () => {
                         <Button variant="destructive" size="sm">
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Albums Tab */}
+          <TabsContent value="albums" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gerenciamento de Álbuns</CardTitle>
+                <CardDescription>Visualize e gerencie todos os álbuns da plataforma</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {albums.map((album) => (
+                    <div key={album.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{album.name}</p>
+                        <p className="text-xs text-muted-foreground">Usuário: {album.user_id}</p>
+                        <p className="text-xs text-muted-foreground">Criado em: {new Date(album.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground">{album.is_public ? 'Público' : 'Privado'}</p>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <Badge variant="secondary">{album.cardsCount || 0} cartas</Badge>
+                        <Button variant="outline" size="sm"><Eye className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="destructive" size="sm"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   ))}
@@ -342,17 +529,53 @@ const AdminDashboard = () => {
                 <CardDescription>Gerencie as configurações gerais da plataforma</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="api-key">API Key Pokémon TCG</Label>
-                  <Input
-                    id="api-key"
-                    value="feb26d91-2c88-4ad0-bc4f-341300b092e3"
-                    readOnly
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Chave da API para integração com Pokémon TCG
-                  </p>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Configurações de APIs</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="api-key">API Key Pokémon TCG</Label>
+                    <Input
+                      id="api-key"
+                      value="feb26d91-2c88-4ad0-bc4f-341300b092e3"
+                      readOnly
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Chave da API para integração com Pokémon TCG (19.500+ cartas)
+                    </p>
+                    <Badge variant="secondary" className="text-xs">
+                      ✅ Ativa e Funcionando
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tcgdx-url">API TCGdx URL</Label>
+                    <Input
+                      id="tcgdx-url"
+                      value="https://api.tcgdx.net/v2/graphql"
+                      readOnly
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      URL da API TCGdx para cartas em português
+                    </p>
+                    <Badge variant="destructive" className="text-xs">
+                      ❌ Servidor Fora do Ar
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="translation-status">Sistema de Tradução</Label>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm font-medium">Status: Ativo</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tradução automática de tipos, raridades, ataques e habilidades para português
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      ✅ Funcionando
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -374,9 +597,63 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                <Button>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Teste de APIs</h3>
+                  
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={testPokemonTcgApi}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      Testar Pokémon TCG API
+                    </Button>
+                    
+                    <Button 
+                      onClick={testTcgdxApi}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      Testar TCGdx API
+                    </Button>
+                  </div>
+                  
+                  {apiTestResults && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <h4 className="font-medium mb-2">Resultados dos Testes:</h4>
+                      <div className="space-y-1 text-sm">
+                        {apiTestResults.map((result, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <Badge variant={result.success ? "secondary" : "destructive"}>
+                              {result.success ? "✅" : "❌"}
+                            </Badge>
+                            <span>{result.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="buy-link">Link do botão Compre Aqui</Label>
+                  <Input
+                    id="buy-link"
+                    value={buyLink}
+                    onChange={handleBuyLinkChange}
+                    placeholder="https://sualoja.com/produto"
+                    disabled={buyLinkLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Este link será usado no botão "Compre Aqui" do cabeçalho da home.
+                  </p>
+                </div>
+
+                <Button onClick={handleSaveSettings} disabled={buyLinkLoading}>
                   <Settings className="h-4 w-4 mr-2" />
-                  Salvar Configurações
+                  {buyLinkLoading ? 'Salvando...' : 'Salvar Configurações'}
                 </Button>
               </CardContent>
             </Card>

@@ -53,7 +53,17 @@ export const AddToAlbumModal = ({ isOpen, onClose, card, onSuccess }: AddToAlbum
   )
 
   const handleAddToAlbum = async () => {
+    console.log('🟢 Iniciando adição de carta ao álbum:', {
+      selectedAlbum,
+      cardId: card?.id,
+      cardName: card?.name,
+      quantity,
+      notes,
+      user: user?.id
+    })
+
     if (!selectedAlbum || !card) {
+      console.log('❌ Dados insuficientes:', { selectedAlbum, card })
       setError('Selecione um álbum')
       return
     }
@@ -62,11 +72,13 @@ export const AddToAlbumModal = ({ isOpen, onClose, card, onSuccess }: AddToAlbum
     setError(null)
 
     try {
+      console.log('🟢 Chamando albumService.addCardToAlbum...')
       await albumService.addCardToAlbum(selectedAlbum, card.id, quantity, notes || undefined)
+      console.log('✅ Carta adicionada com sucesso!')
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error('Erro ao adicionar carta ao álbum:', err)
+      console.error('❌ Erro ao adicionar carta ao álbum:', err)
       setError(err.message || 'Erro ao adicionar carta ao álbum')
     } finally {
       setLoading(false)

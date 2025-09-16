@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,8 @@ import { EditAlbumModal } from "@/components/EditAlbumModal";
 import { ShareAlbumModal } from "@/components/ShareAlbumModal";
 import { albumService } from "@/services/albumService";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,6 +34,21 @@ const Dashboard = () => {
   const [selectedAlbum, setSelectedAlbum] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Verificar se o usuário está logado
+  useEffect(() => {
+    if (!user) {
+      navigate('/');
+      return;
+    }
+  }, [user, navigate]);
+
+  // Se não há usuário, não renderizar nada (será redirecionado)
+  if (!user) {
+    return null;
+  }
 
   // Carregar álbuns do usuário
   useEffect(() => {
@@ -41,15 +58,15 @@ const Dashboard = () => {
       if (!user) {
         console.log('Usuário não logado, usando dados mock');
         setAlbums([
-          {
-            id: 1,
-            name: "Coleção Base Set",
-            description: "Cartas clássicas do primeiro set de Pokémon TCG",
-            cardsCount: 45,
-            totalCards: 102,
+    {
+      id: 1,
+      name: "Coleção Base Set",
+      description: "Cartas clássicas do primeiro set de Pokémon TCG",
+      cardsCount: 45,
+      totalCards: 102,
             created_at: "2024-01-15",
             is_public: true,
-            coverCard: "Charizard"
+      coverCard: "Charizard"
           }
         ]);
         setLoading(false);
@@ -60,6 +77,7 @@ const Dashboard = () => {
         console.log('Buscando álbuns do usuário:', user.id);
         const userAlbums = await albumService.getUserAlbums(user.id);
         console.log('Álbuns encontrados:', userAlbums);
+        console.log('Verificando cover_image_url nos álbuns:', userAlbums.map(a => ({ id: a.id, name: a.name, cover_image_url: (a as any).cover_image_url })));
         
         // Carregar contagem de cartas para cada álbum
         const albumsWithCounts = await Promise.all(
@@ -106,6 +124,7 @@ const Dashboard = () => {
     loadAlbums();
   }, [user]);
 
+
   const handleCreateAlbum = () => {
     setIsCreateModalOpen(true);
   };
@@ -150,6 +169,11 @@ const Dashboard = () => {
     }
   };
 
+  const handleAlbumClick = (albumId: string) => {
+    navigate(`/album/${albumId}`);
+  };
+
+
   const filteredAlbums = albums.filter(album => 
     album.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -169,7 +193,6 @@ const Dashboard = () => {
               Gerencie sua coleção de cartas Pokémon TCG
             </p>
           </div>
-          
           <Button 
             variant="hero" 
             size="lg" 
@@ -287,7 +310,34 @@ const Dashboard = () => {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredAlbums.map((album) => (
-              <Card key={album.id} className="pokemon-card p-6 group cursor-pointer">
+              <Card key={album.id} className="pokemon-card p-6 group cursor-pointer" onClick={() => handleAlbumClick(album.id)}>
+                {/* Imagem de capa do álbum */}
+                {(album as any).cover_image_url ? (
+                  <div className="mb-4">
+                    <img
+                      src={(album as any).cover_image_url}
+                      alt={`Capa do álbum ${album.name}`}
+                      className="w-full h-32 object-cover rounded-lg border"
+                      onError={(e) => {
+                        console.log('Erro ao carregar imagem de capa:', (album as any).cover_image_url)
+                        e.currentTarget.style.display = 'none'
+                      }}
+                      onLoad={() => {
+                        console.log('Imagem de capa carregada com sucesso:', (album as any).cover_image_url)
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="mb-4">
+                    <div className="w-full h-32 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-lg flex items-center justify-center border">
+                      <BookOpen className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Sem imagem de capa
+                    </p>
+                  </div>
+                )}
+                
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-card-foreground mb-1 group-hover:text-primary transition-colors">
@@ -325,20 +375,20 @@ const Dashboard = () => {
 
                 <div className="flex gap-2">
                   <Link to={`/album/${album.id}`}>
-                    <Button variant="outline" size="sm" className="flex-1 gap-2">
-                      <Eye className="w-4 h-4" />
-                      Ver
-                    </Button>
+                  <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Eye className="w-4 h-4" />
+                    Ver
+                  </Button>
                   </Link>
-                  <Button variant="ghost" size="sm" className="gap-2" onClick={() => handleEditAlbum(album)}>
+                  <Button variant="ghost" size="sm" className="gap-2" onClick={(e) => { e.stopPropagation(); handleEditAlbum(album); }}>
                     <Edit3 className="w-4 h-4" />
                     Editar
                   </Button>
-                  <Button variant="ghost" size="sm" className="gap-2" onClick={() => handleShareAlbum(album)}>
+                  <Button variant="ghost" size="sm" className="gap-2" onClick={(e) => { e.stopPropagation(); handleShareAlbum(album); }}>
                     <Share2 className="w-4 h-4" />
                     Compartilhar
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAlbum(album.id)}>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteAlbum(album.id); }}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -369,6 +419,7 @@ const Dashboard = () => {
         onClose={() => setIsShareModalOpen(false)}
         album={selectedAlbum}
       />
+
     </div>
   );
 };

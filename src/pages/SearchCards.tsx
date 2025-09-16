@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { translateType, translateRarity, translateCardName } from '@/utils/translations';
 import { 
   Search, 
   Filter, 
@@ -104,7 +105,7 @@ const SearchCards = () => {
       return;
     }
     
-    alert(`Carta ${card.name} adicionada à sua coleção!`);
+    alert(`Carta ${translateCardName(card.name)} adicionada à sua coleção!`);
   }
 
   const openCardPreview = (card: any) => {
@@ -282,7 +283,7 @@ const SearchCards = () => {
                 <div className="relative">
                   <img
                     src={card.images?.small || card.images?.large}
-                    alt={card.name}
+                    alt={translateCardName(card.name)}
                     className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                     onClick={() => openCardPreview(card)}
                     onError={(e) => {
@@ -311,7 +312,7 @@ const SearchCards = () => {
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div>
-                      <h3 className="font-bold text-lg line-clamp-1">{card.name}</h3>
+                      <h3 className="font-bold text-lg line-clamp-1">{translateCardName(card.name)}</h3>
                       <p className="text-sm text-muted-foreground">
                         {card.set?.name} • #{card.number}
                       </p>
@@ -320,12 +321,12 @@ const SearchCards = () => {
                     <div className="flex flex-wrap gap-1">
                       {card.types && card.types.map((type: string) => (
                         <Badge key={type} variant="secondary" className="text-xs">
-                          {type}
+                          {translateType(type)}
                         </Badge>
                       ))}
                       {card.rarity && (
                         <Badge variant="outline" className="text-xs">
-                        {card.rarity}
+                          {translateRarity(card.rarity)}
                       </Badge>
                       )}
                     </div>

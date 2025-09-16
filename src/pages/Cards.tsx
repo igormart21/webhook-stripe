@@ -9,6 +9,9 @@ import { useAuth } from '@/contexts/AuthContext'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import CardPreviewModal from '@/components/CardPreviewModal'
+import { translateType, translateRarity, translateCardName } from '@/utils/translations'
+import { EditApiCardModal } from '@/components/EditApiCardModal';
+import { AddCustomCardModal } from '@/components/AddCustomCardModal';
 
 const Cards = () => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -17,6 +20,9 @@ const Cards = () => {
   const [favorites, setFavorites] = useState<string[]>([])
   const [selectedCard, setSelectedCard] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showEditApiModal, setShowEditApiModal] = useState(false);
+  const [selectedCardToAdd, setSelectedCardToAdd] = useState<any>(null);
+  const [showCustomModal, setShowCustomModal] = useState(false);
   const { user } = useAuth()
 
   // Carregar cartas populares ao inicializar
@@ -79,14 +85,28 @@ const Cards = () => {
     )
   }
 
-  const addToCollection = (card: any) => {
+  const handleAddToAlbum = (card: any) => {
     if (!user) {
-      alert('Faça login para adicionar à sua coleção!')
-      return
+      alert('Faça login para adicionar à sua coleção!');
+      return;
     }
-    
-    alert(`Carta ${card.name} adicionada à sua coleção!`)
-  }
+    setSelectedCardToAdd(card);
+    setShowEditApiModal(true);
+  };
+  const handleEditApiSuccess = () => {
+    setShowEditApiModal(false);
+    setSelectedCardToAdd(null);
+    // Opcional: mostrar toast de sucesso
+  };
+  const handleEditApiClose = () => {
+    setShowEditApiModal(false);
+    setSelectedCardToAdd(null);
+  };
+
+  const handleCustomSuccess = () => {
+    setShowCustomModal(false);
+    // Opcional: mostrar toast de sucesso
+  };
 
   const openCardPreview = (card: any) => {
     setSelectedCard(card)
@@ -138,6 +158,14 @@ const Cards = () => {
           </div>
         </Card>
 
+        {user && (
+          <div className="flex justify-end mb-4">
+            <Button variant="secondary" onClick={() => setShowCustomModal(true)}>
+              <Plus className="w-4 h-4 mr-2" /> Adicionar Carta Personalizada
+            </Button>
+          </div>
+        )}
+
         {/* Results */}
         <div className="mb-6">
           <p className="text-muted-foreground">
@@ -161,7 +189,7 @@ const Cards = () => {
                 <div className="relative">
                   <img
                     src={card.images?.small || card.images?.large}
-                    alt={card.name}
+                    alt={translateCardName(card.name)}
                     className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                     onClick={() => openCardPreview(card)}
                     onError={(e) => {
@@ -190,7 +218,7 @@ const Cards = () => {
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div>
-                      <h3 className="font-bold text-lg line-clamp-1">{card.name}</h3>
+                      <h3 className="font-bold text-lg line-clamp-1">{translateCardName(card.name)}</h3>
                       <p className="text-sm text-muted-foreground">
                         {card.set?.name} • #{card.number}
                       </p>
@@ -199,12 +227,12 @@ const Cards = () => {
                     <div className="flex flex-wrap gap-1">
                       {card.types && card.types.map((type: string) => (
                         <Badge key={type} variant="secondary" className="text-xs">
-                          {type}
+                          {translateType(type)}
                         </Badge>
                       ))}
                       {card.rarity && (
                         <Badge variant="outline" className="text-xs">
-                          {card.rarity}
+                          {translateRarity(card.rarity)}
                         </Badge>
                       )}
                     </div>
@@ -220,7 +248,7 @@ const Cards = () => {
                       <Button
                         size="sm"
                         className="flex-1"
-                        onClick={() => addToCollection(card)}
+                        onClick={() => handleAddToAlbum(card)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Adicionar
@@ -261,9 +289,26 @@ const Cards = () => {
         onClose={closeCardPreview}
         card={selectedCard}
         onToggleFavorite={toggleFavorite}
-        onAddToCollection={addToCollection}
+        onAddToCollection={handleAddToAlbum}
         isFavorite={selectedCard ? favorites.includes(selectedCard.id) : false}
       />
+      {showEditApiModal && selectedCardToAdd && (
+        <EditApiCardModal
+          isOpen={showEditApiModal}
+          onClose={handleEditApiClose}
+          albumId={user?.id || ''} // ou passe o albumId correto se necessário
+          card={selectedCardToAdd}
+          onSuccess={handleEditApiSuccess}
+        />
+      )}
+      {user && showCustomModal && (
+        <AddCustomCardModal
+          isOpen={showCustomModal}
+          onClose={() => setShowCustomModal(false)}
+          albumId={user?.id || ''} // ou passe o albumId correto se necessário
+          onSuccess={handleCustomSuccess}
+        />
+      )}
     </div>
   )
 }

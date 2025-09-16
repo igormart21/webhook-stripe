@@ -10,6 +10,7 @@ import AlbumView from "./pages/AlbumView";
 import SearchCards from "./pages/SearchCards";
 import Cards from "./pages/Cards";
 import AdminDashboard from "./pages/AdminDashboard";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import "./index.css";
 
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/album/:id" element={<AlbumView />} />
             <Route path="/search" element={<SearchCards />} />
             <Route path="/cards" element={<Cards />} />
